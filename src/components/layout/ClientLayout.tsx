@@ -9,16 +9,18 @@ export const ClientLayout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const colors = getColors();
   
-  // Hide navbar and footer on dashboard pages
+  // Hide navbar and footer on dashboard and room pages
   const isDashboard = pathname?.startsWith('/dashboard');
+  const isRoom = pathname?.startsWith('/room');
+  const hideNavFooter = isDashboard || isRoom;
   
   return (
     <div style={{ backgroundColor: colors.background }}>
-      {!isDashboard && <Navbar />}
+      {!hideNavFooter && <Navbar />}
       <main className="min-h-screen">
         {children}
       </main>
-      {!isDashboard && <Footer />}
+      {!hideNavFooter && <Footer />}
     </div>
   );
 };

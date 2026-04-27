@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Video, Upload, X } from 'lucide-react';
+import { Plus, Play, Upload, X } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { Button } from '@/components/ui/Button';
 import { useRoom } from '@/contexts/RoomContext';
@@ -9,6 +9,8 @@ import { useRoom } from '@/contexts/RoomContext';
 export const AddMedia = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+  const [isLoadingTitle, setIsLoadingTitle] = useState(false);
   const [localFile, setLocalFile] = useState<File | null>(null);
   const colors = getColors();
   const { addToQueue } = useRoom();
@@ -18,17 +20,43 @@ export const AddMedia = () => {
     return match ? match[1] : null;
   };
 
+  const fetchVideoTitle = async (videoId: string) => {
+    setIsLoadingTitle(true);
+    try {
+      // Using YouTube oEmbed API to get video title
+      const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+      const data = await response.json();
+      setVideoTitle(data.title);
+    } catch (error) {
+      setVideoTitle(`YouTube Video`);
+    } finally {
+      setIsLoadingTitle(false);
+    }
+  };
+
+  const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    setUrl(newUrl);
+    const videoId = extractYouTubeId(newUrl);
+    if (videoId) {
+      await fetchVideoTitle(videoId);
+    } else {
+      setVideoTitle('');
+    }
+  };
+
   const handleAddYouTube = () => {
     const videoId = extractYouTubeId(url);
-    if (videoId) {
+    if (videoId && videoTitle) {
       addToQueue({
         id: Date.now().toString(),
-        title: `YouTube Video ${videoId}`,
+        title: videoTitle,
         type: 'youtube',
         videoId,
         addedBy: 'You'
       });
       setUrl('');
+      setVideoTitle('');
       setIsOpen(false);
     }
   };
@@ -39,7 +67,7 @@ export const AddMedia = () => {
       const url = URL.createObjectURL(file);
       addToQueue({
         id: Date.now().toString(),
-        title: file.name,
+        title: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
         type: 'local',
         url,
         addedBy: 'You'
@@ -51,10 +79,14 @@ export const AddMedia = () => {
 
   return (
     <>
-      <Button variant="primary" onClick={() => setIsOpen(true)} className="w-full">
-        <Plus size={18} className="mr-2" />
-        Add to Queue
-      </Button>
+      <Button 
+  variant="primary" 
+  onClick={() => setIsOpen(true)} 
+  className="w-80% flex items-center justify-center gap-2"
+>
+  <Plus size={18} />
+  <span>Add to Queue</span>
+</Button>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -80,7 +112,7 @@ export const AddMedia = () => {
                   <input
                     type="text"
                     value={url}
-                    onChange={(e) => setUrl(e.target.value)}
+                    onChange={handleUrlChange}
                     placeholder="https://youtube.com/watch?v=..."
                     className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
                     style={{
@@ -88,10 +120,19 @@ export const AddMedia = () => {
                       color: colors.text.primary
                     }}
                   />
-                  <Button variant="primary" onClick={handleAddYouTube}>
-                    <Video size={16} />
+                  <Button 
+                    variant="primary" 
+                    onClick={handleAddYouTube}
+                    disabled={!videoTitle || isLoadingTitle}
+                  >
+                    {isLoadingTitle ? 'Loading...' : <Play size={16} />}
                   </Button>
                 </div>
+                {videoTitle && (
+                  <p className="text-xs mt-1" style={{ color: colors.text.muted }}>
+                    {videoTitle}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
