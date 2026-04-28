@@ -3,7 +3,7 @@
 import { DoorOpen, Users, Clock, ChevronRight, Crown, Sparkles } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { Button } from '@/components/ui/Button';
-import { SavedRoom } from '@/store/roomStore';
+import { SavedRoom } from '@/store/savedRoomsStore';
 
 interface RoomCardProps {
   room: SavedRoom;

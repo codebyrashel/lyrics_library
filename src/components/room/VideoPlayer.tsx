@@ -25,7 +25,9 @@ export const VideoPlayer = () => {
     playNext,
     playPrevious,
     queue,
-    history
+    history,
+    setVolume = (v: number) => {}, // placeholder safe fallback
+
   } = useRoomStore();
 
   const hasNext = queue.length > 0;
