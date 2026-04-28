@@ -40,9 +40,10 @@ export const LibraryEmptyState = ({ searchQuery, onClearSearch, onCreatePlaylist
         Create your first playlist to get started
       </p>
       <Button variant="primary" onClick={onCreatePlaylist}>
-        <Plus size={18} className="mr-2" />
+        <Plus size={18} className="mr-2 inline-flex" />
         Create Playlist
       </Button>
     </>
   );
 };
+

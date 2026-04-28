@@ -117,7 +117,7 @@ export default function LibraryPage() {
             </p>
           </div>
           <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={18} className="mr-2" />
+            <Plus size={18} className="mr-2 inline-flex" />
             Create Playlist
           </Button>
         </div>

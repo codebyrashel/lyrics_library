@@ -92,7 +92,7 @@ export default function ProfilePage() {
             </p>
           </div>
           <Button variant="primary" onClick={() => setShowEditModal(true)}>
-            <Edit2 size={18} className="mr-2" />
+            <Edit2 size={18} className="mr-2 inline-flex" />
             Edit Profile
           </Button>
         </div>
