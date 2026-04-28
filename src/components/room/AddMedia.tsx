@@ -4,16 +4,15 @@ import { useState } from 'react';
 import { Plus, Play, Upload, X } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { Button } from '@/components/ui/Button';
-import { useRoom } from '@/contexts/RoomContext';
+import { useRoomStore } from '@/store/roomStore';
 
 export const AddMedia = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoadingTitle, setIsLoadingTitle] = useState(false);
-  const [localFile, setLocalFile] = useState<File | null>(null);
   const colors = getColors();
-  const { addToQueue } = useRoom();
+  const { addToQueue, playItem, currentPlaying } = useRoomStore();
 
   const extractYouTubeId = (url: string) => {
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
@@ -23,7 +22,6 @@ export const AddMedia = () => {
   const fetchVideoTitle = async (videoId: string) => {
     setIsLoadingTitle(true);
     try {
-      // Using YouTube oEmbed API to get video title
       const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
       const data = await response.json();
       setVideoTitle(data.title);
@@ -48,13 +46,21 @@ export const AddMedia = () => {
   const handleAddYouTube = () => {
     const videoId = extractYouTubeId(url);
     if (videoId && videoTitle) {
-      addToQueue({
+      const newItem = {
         id: Date.now().toString(),
         title: videoTitle,
-        type: 'youtube',
+        type: 'youtube' as const,
         videoId,
         addedBy: 'You'
-      });
+      };
+      
+      addToQueue(newItem);
+      
+      // If nothing is playing, play immediately
+      if (!currentPlaying) {
+        playItem(newItem);
+      }
+      
       setUrl('');
       setVideoTitle('');
       setIsOpen(false);
@@ -65,14 +71,21 @@ export const AddMedia = () => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      addToQueue({
+      const newItem = {
         id: Date.now().toString(),
-        title: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
-        type: 'local',
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        type: 'local' as const,
         url,
         addedBy: 'You'
-      });
-      setLocalFile(null);
+      };
+      
+      addToQueue(newItem);
+      
+      // If nothing is playing, play immediately
+      if (!currentPlaying) {
+        playItem(newItem);
+      }
+      
       setIsOpen(false);
     }
   };
@@ -80,13 +93,13 @@ export const AddMedia = () => {
   return (
     <>
       <Button 
-  variant="primary" 
-  onClick={() => setIsOpen(true)} 
-  className="w-80% flex items-center justify-center gap-2"
->
-  <Plus size={18} />
-  <span>Add to Queue</span>
-</Button>
+        variant="primary" 
+        onClick={() => setIsOpen(true)} 
+        className="flex items-center justify-center gap-2"
+      >
+        <Plus size={18} />
+        <span>Add to Queue</span>
+      </Button>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -151,7 +164,7 @@ export const AddMedia = () => {
                   Local File
                 </label>
                 <label
-                  className="flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer transition-all hover:scale-105"
+                  className="flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer transition-colors hover:bg-opacity-80"
                   style={{ borderColor: `${colors.primary}50`, color: colors.primary }}
                 >
                   <Upload size={20} />

@@ -2,35 +2,33 @@
 
 import { Users, Crown, Mic, MicOff, Headphones } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
-import { useRoom } from '@/contexts/RoomContext';
+import { useRoomStore } from '@/store/roomStore';
 
 export const Participants = () => {
   const colors = getColors();
-  const { participants } = useRoom();
+  const { participants } = useRoomStore();
 
   // Dummy participants for demo
-const dummyParticipants = [
-  { id: '1', name: 'You', isHost: true, isSpeaking: false, avatar: 'JD' },
-  { id: '2', name: 'Sarah Johnson', isHost: false, isSpeaking: true, avatar: 'SJ' },
-  { id: '3', name: 'Michael Chen', isHost: false, isSpeaking: false, avatar: 'MC' },
-  { id: '4', name: 'Emma Rodriguez', isHost: false, isSpeaking: false, avatar: 'ER' },
-  { id: '5', name: 'David Kim', isHost: false, isSpeaking: false, avatar: 'DK' },
-  { id: '6', name: 'Lisa Thompson', isHost: false, isSpeaking: false, avatar: 'LT' },
-
-  { id: '7', name: 'Alex Morgan', isHost: false, isSpeaking: false, avatar: 'AM' },
-  { id: '8', name: 'Noah Williams', isHost: false, isSpeaking: true, avatar: 'NW' },
-  { id: '9', name: 'Olivia Brown', isHost: false, isSpeaking: false, avatar: 'OB' },
-  { id: '10', name: 'Ethan Davis', isHost: false, isSpeaking: false, avatar: 'ED' },
-  { id: '11', name: 'Sophia Martinez', isHost: false, isSpeaking: false, avatar: 'SM' },
-  { id: '12', name: 'James Wilson', isHost: false, isSpeaking: false, avatar: 'JW' },
-
-  { id: '13', name: 'Ava Anderson', isHost: false, isSpeaking: false, avatar: 'AA' },
-  { id: '14', name: 'Benjamin Taylor', isHost: false, isSpeaking: false, avatar: 'BT' },
-  { id: '15', name: 'Isabella Thomas', isHost: false, isSpeaking: false, avatar: 'IT' },
-  { id: '16', name: 'Lucas Martin', isHost: false, isSpeaking: false, avatar: 'LM' },
-  { id: '17', name: 'Mia Garcia', isHost: false, isSpeaking: false, avatar: 'MG' },
-  { id: '18', name: 'Henry Lee', isHost: false, isSpeaking: false, avatar: 'HL' },
-];
+  const dummyParticipants = [
+    { id: '1', name: 'You', isHost: true, isSpeaking: false, avatar: 'JD' },
+    { id: '2', name: 'Sarah Johnson', isHost: false, isSpeaking: true, avatar: 'SJ' },
+    { id: '3', name: 'Michael Chen', isHost: false, isSpeaking: false, avatar: 'MC' },
+    { id: '4', name: 'Emma Rodriguez', isHost: false, isSpeaking: false, avatar: 'ER' },
+    { id: '5', name: 'David Kim', isHost: false, isSpeaking: false, avatar: 'DK' },
+    { id: '6', name: 'Lisa Thompson', isHost: false, isSpeaking: false, avatar: 'LT' },
+    { id: '7', name: 'Alex Morgan', isHost: false, isSpeaking: false, avatar: 'AM' },
+    { id: '8', name: 'Noah Williams', isHost: false, isSpeaking: true, avatar: 'NW' },
+    { id: '9', name: 'Olivia Brown', isHost: false, isSpeaking: false, avatar: 'OB' },
+    { id: '10', name: 'Ethan Davis', isHost: false, isSpeaking: false, avatar: 'ED' },
+    { id: '11', name: 'Sophia Martinez', isHost: false, isSpeaking: false, avatar: 'SM' },
+    { id: '12', name: 'James Wilson', isHost: false, isSpeaking: false, avatar: 'JW' },
+    { id: '13', name: 'Ava Anderson', isHost: false, isSpeaking: false, avatar: 'AA' },
+    { id: '14', name: 'Benjamin Taylor', isHost: false, isSpeaking: false, avatar: 'BT' },
+    { id: '15', name: 'Isabella Thomas', isHost: false, isSpeaking: false, avatar: 'IT' },
+    { id: '16', name: 'Lucas Martin', isHost: false, isSpeaking: false, avatar: 'LM' },
+    { id: '17', name: 'Mia Garcia', isHost: false, isSpeaking: false, avatar: 'MG' },
+    { id: '18', name: 'Henry Lee', isHost: false, isSpeaking: false, avatar: 'HL' },
+  ];
 
   const allParticipants = dummyParticipants;
 
@@ -55,7 +53,7 @@ const dummyParticipants = [
         {allParticipants.map((participant) => (
           <div 
             key={participant.id} 
-            className="flex items-center justify-between p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            className="flex items-center justify-between p-2 rounded-lg transition-colors"
             style={{ 
               backgroundColor: participant.isSpeaking ? `${colors.primary}15` : colors.background,
               border: participant.isSpeaking ? `1px solid ${colors.primary}30` : 'none'

@@ -2,16 +2,12 @@
 
 import { Trash2, Music, Video, GripVertical } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
-import { useRoom } from '@/contexts/RoomContext';
+import { useRoomStore } from '@/store/roomStore';
 import { AddMedia } from './AddMedia';
 
 export const Queue = () => {
   const colors = getColors();
-  const { queue, removeFromQueue, setCurrentPlaying } = useRoom();
-
-  const playNext = (item: any) => {
-    setCurrentPlaying(item);
-  };
+  const { queue, removeFromQueue, playItem } = useRoomStore();
 
   return (
     <div 
@@ -37,9 +33,9 @@ export const Queue = () => {
           queue.map((item, index) => (
             <div
               key={item.id}
-              className="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-opacity-80 relative group"
+              className="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors hover:bg-opacity-80 relative group"
               style={{ backgroundColor: colors.background }}
-              onClick={() => playNext(item)}
+              onClick={() => playItem(item)}
             >
               <GripVertical size={14} className="shrink-0" style={{ color: colors.text.muted }} />
               {item.type === 'youtube' ? (
@@ -60,7 +56,7 @@ export const Queue = () => {
                   e.stopPropagation();
                   removeFromQueue(item.id);
                 }}
-                className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded transition-all duration-200 hover:scale-110"
+                className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded transition-colors"
                 style={{ color: colors.status.error }}
               >
                 <Trash2 size={14} />

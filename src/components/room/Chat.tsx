@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
-import { useRoom } from '@/contexts/RoomContext';
+import { useRoomStore } from '@/store/roomStore';
 
 export const Chat = () => {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const colors = getColors();
-  const { messages, sendMessage } = useRoom();
+  const { messages, sendMessage } = useRoomStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -67,7 +67,7 @@ export const Chat = () => {
         />
         <button
           onClick={handleSend}
-          className="p-2 rounded-lg transition-all hover:scale-105"
+          className="p-2 rounded-lg transition-colors hover:bg-opacity-80"
           style={{ backgroundColor: colors.primary, color: 'white' }}
         >
           <Send size={16} />

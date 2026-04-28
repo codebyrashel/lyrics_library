@@ -11,7 +11,7 @@ import { RoomsTabs } from '@/components/rooms/RoomsTabs';
 import { EmptyRoomsState } from '@/components/rooms/EmptyRoomsState';
 import { DemoNotice } from '@/components/rooms/DemoNotice';
 import { TipsSection } from '@/components/rooms/TipsSection';
-import { getSavedRooms, SavedRoom } from '@/store/roomStore';
+import { getSavedRooms, SavedRoom, removeRoom } from '@/store/savedRoomsStore';
 
 const dummyRooms: SavedRoom[] = [
   { id: 'chill-vibes-abc123', name: 'Friday Night Vibes', createdAt: '2024-01-15T20:00:00.000Z', lastVisited: '2024-01-20T22:30:00.000Z', isActive: true, participantCount: 5, isCreator: true },
