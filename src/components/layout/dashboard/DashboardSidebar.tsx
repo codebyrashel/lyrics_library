@@ -10,12 +10,14 @@ import {
   User,
   Music2,
   Menu,
-  X
+  X,
+  DoorOpen
 } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 
 const navItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', exact: true },
+  { name: 'Rooms', icon: DoorOpen, href: '/dashboard/rooms', exact: false },
   { name: 'Library', icon: Library, href: '/dashboard/library', exact: false },
   { name: 'Friends', icon: Users, href: '/dashboard/friends', exact: false },
   { name: 'Profile', icon: User, href: '/dashboard/profile', exact: false },
