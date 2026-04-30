@@ -5,11 +5,12 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { VideoPlayer } from '@/components/room/VideoPlayer';
 import { Chat } from '@/components/room/Chat';
-import { Queue } from '@/components/room/Queue';
+import { Playlist } from '@/components/room/Playlist';
 import { Participants } from '@/components/room/Participants';
 import { LeaveRoomModal } from '@/components/room/LeaveRoomModal';
 import { getColors } from '@/store/colorStore';
 import { useRoomStore } from '@/store/roomStore';
+import { saveRoom, updateRoomLastVisited } from '@/store/savedRoomsStore';
 
 export default function RoomPage() {
   const params = useParams();
@@ -17,15 +18,27 @@ export default function RoomPage() {
   const searchParams = useSearchParams();
   const roomId = params.roomId as string;
   const roomName = searchParams.get('name') || `Room ${roomId.slice(0, 8)}`;
+  const isHost = searchParams.get('isHost') === 'true';
   const colors = getColors();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const { resetRoom } = useRoomStore();
 
   useEffect(() => {
+    saveRoom({
+      id: roomId,
+      name: roomName,
+      createdAt: new Date().toISOString(),
+      lastVisited: new Date().toISOString(),
+      isActive: true,
+      participantCount: 1,
+      isCreator: isHost
+    });
+    updateRoomLastVisited(roomId);
+    
     return () => {
       resetRoom();
     };
-  }, [resetRoom]);
+  }, [roomId, roomName, isHost, resetRoom]);
 
   const handleLeaveRoom = () => {
     router.push('/dashboard');
@@ -40,7 +53,7 @@ export default function RoomPage() {
           </h1>
           <button
             onClick={() => setShowLeaveModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-opacity"
             style={{ 
               backgroundColor: colors.status.error,
               color: 'white'
@@ -54,19 +67,20 @@ export default function RoomPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">
+          {/* Left Column - Video Player and Playlist */}
           <div className="lg:col-span-2 space-y-4">
             <VideoPlayer />
             <div className="h-96">
-              <Queue />
+              <Playlist />
             </div>
           </div>
+          
+          {/* Right Column - Chat and Participants */}
           <div className="space-y-4">
             <div className="h-96">
               <Chat />
             </div>
-            <div className="flex-1" style={{ height: 'calc(100vh - 200px)' }}>
-              <Participants />
-            </div>
+            <Participants />
           </div>
         </div>
       </div>

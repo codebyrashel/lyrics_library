@@ -12,7 +12,7 @@ export const AddMedia = () => {
   const [videoTitle, setVideoTitle] = useState('');
   const [isLoadingTitle, setIsLoadingTitle] = useState(false);
   const colors = getColors();
-  const { addToQueue, playItem, currentPlaying } = useRoomStore();
+  const { addToPlaylist, playItem, currentPlaying } = useRoomStore();
 
   const extractYouTubeId = (url: string) => {
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
@@ -51,12 +51,12 @@ export const AddMedia = () => {
         title: videoTitle,
         type: 'youtube' as const,
         videoId,
-        addedBy: 'You'
+        addedBy: 'You',
+        addedAt: new Date().toISOString()
       };
       
-      addToQueue(newItem);
+      addToPlaylist(newItem);
       
-      // If nothing is playing, play immediately
       if (!currentPlaying) {
         playItem(newItem);
       }
@@ -70,22 +70,33 @@ export const AddMedia = () => {
   const handleLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
+      // Check if file is a valid video/audio type
+      const validTypes = ['video/mp4', 'video/webm', 'video/ogg', 'audio/mpeg', 'audio/wav', 'audio/ogg'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload a valid video (MP4, WebM) or audio (MP3, WAV) file');
+        return;
+      }
+      
+      // Create blob URL for the file
+      const blobUrl = URL.createObjectURL(file);
+      
       const newItem = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, ''),
         type: 'local' as const,
-        url,
-        addedBy: 'You'
+        url: blobUrl,
+        addedBy: 'You',
+        addedAt: new Date().toISOString()
       };
       
-      addToQueue(newItem);
+      addToPlaylist(newItem);
       
-      // If nothing is playing, play immediately
       if (!currentPlaying) {
         playItem(newItem);
       }
       
+      // Reset file input
+      e.target.value = '';
       setIsOpen(false);
     }
   };
@@ -98,7 +109,7 @@ export const AddMedia = () => {
         className="flex items-center justify-center gap-2"
       >
         <Plus size={18} />
-        <span>Add to Queue</span>
+        <span>Add to Watchlist</span>
       </Button>
 
       {isOpen && (
@@ -171,11 +182,14 @@ export const AddMedia = () => {
                   <span>Click to upload audio/video</span>
                   <input
                     type="file"
-                    accept="video/*,audio/*"
+                    accept="video/mp4,video/webm,video/ogg,audio/mpeg,audio/wav,audio/ogg"
                     onChange={handleLocalFile}
                     className="hidden"
                   />
                 </label>
+                <p className="text-xs mt-2" style={{ color: colors.text.muted }}>
+                  Supported formats: MP4, WebM, MP3, WAV
+                </p>
               </div>
             </div>
           </div>
