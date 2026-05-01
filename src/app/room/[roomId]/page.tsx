@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
-import { VideoPlayer } from '@/components/room/VideoPlayer';
+import { VideoPlayer } from '@/components/room/players/VideoPlayer';
 import { Chat } from '@/components/room/Chat';
 import { Playlist } from '@/components/room/Playlist';
 import { Participants } from '@/components/room/Participants';

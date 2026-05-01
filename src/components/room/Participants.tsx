@@ -20,21 +20,13 @@ export const Participants = () => {
     { id: '8', name: 'Noah Williams', isHost: false, isSpeaking: true, avatar: 'NW' },
     { id: '9', name: 'Olivia Brown', isHost: false, isSpeaking: false, avatar: 'OB' },
     { id: '10', name: 'Ethan Davis', isHost: false, isSpeaking: false, avatar: 'ED' },
-    { id: '11', name: 'Sophia Martinez', isHost: false, isSpeaking: false, avatar: 'SM' },
-    { id: '12', name: 'James Wilson', isHost: false, isSpeaking: false, avatar: 'JW' },
-    { id: '13', name: 'Ava Anderson', isHost: false, isSpeaking: false, avatar: 'AA' },
-    { id: '14', name: 'Benjamin Taylor', isHost: false, isSpeaking: false, avatar: 'BT' },
-    { id: '15', name: 'Isabella Thomas', isHost: false, isSpeaking: false, avatar: 'IT' },
-    { id: '16', name: 'Lucas Martin', isHost: false, isSpeaking: false, avatar: 'LM' },
-    { id: '17', name: 'Mia Garcia', isHost: false, isSpeaking: false, avatar: 'MG' },
-    { id: '18', name: 'Henry Lee', isHost: false, isSpeaking: false, avatar: 'HL' },
   ];
 
   const allParticipants = dummyParticipants;
 
   return (
     <div 
-      className="flex flex-col h-full rounded-xl overflow-hidden"
+      className="flex flex-col h-128 rounded-xl overflow-hidden"
       style={{ 
         backgroundColor: colors.surface,
         border: `1px solid ${colors.surface}`
