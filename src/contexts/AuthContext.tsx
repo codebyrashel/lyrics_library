@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthState } from '@/types/auth';
 import { authService } from '@/services/auth.service';
+import { wsService } from '@/services/websocket.service';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -46,8 +47,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             isLoading: false,
             error: null,
           });
+          // Connect WebSocket after successful auth check
+          setTimeout(() => wsService.connect(), 500);
         } else {
-          // Token is invalid, clear it
           await authService.logout();
           setState({
             user: null,
@@ -69,9 +71,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     const response = await authService.getCurrentUser();
     if (response.success && response.user) {
+      const updatedUser: User | null = response.user;
       setState(prev => ({
         ...prev,
-        user: response.user,
+        user: updatedUser,
         isAuthenticated: true,
       }));
     }
@@ -89,6 +92,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isLoading: false,
         error: null,
       });
+      // Connect WebSocket after successful login
+      setTimeout(() => wsService.connect(), 500);
       return true;
     } else {
       setState(prev => ({
@@ -109,7 +114,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   ): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
-    // Client-side validation
     if (password !== confirmPassword) {
       setState(prev => ({
         ...prev,
@@ -128,6 +132,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isLoading: false,
         error: null,
       });
+      // Connect WebSocket after successful registration
+      setTimeout(() => wsService.connect(), 500);
       return true;
     } else {
       setState(prev => ({
@@ -140,6 +146,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = async () => {
+    wsService.disconnect();
     await authService.logout();
     setState({
       user: null,
