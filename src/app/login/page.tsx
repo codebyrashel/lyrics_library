@@ -1,14 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { AuthCard } from '@/components/ui/AuthCard';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login, isLoading, error, clearError } = useAuth();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -16,11 +21,15 @@ export default function LoginPage() {
   });
   
   const colors = getColors();
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic later
-    console.log('Login attempt:', formData);
+    clearError();
+    
+    const success = await login(formData.email, formData.password);
+    if (success) {
+      router.push('/dashboard');
+    }
   };
   
   return (
@@ -29,6 +38,16 @@ export default function LoginPage() {
       subtitle="Sign in to your account"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Error Message */}
+        {error && (
+          <div 
+            className="p-3 rounded-lg text-sm text-center"
+            style={{ backgroundColor: `${colors.status.error}15`, color: colors.status.error }}
+          >
+            {error}
+          </div>
+        )}
+        
         {/* Email Input */}
         <Input
           type="email"
@@ -36,6 +55,7 @@ export default function LoginPage() {
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           icon={<Mail size={18} style={{ color: colors.text.muted }} />}
+          required
         />
         
         {/* Password Input with Show/Hide */}
@@ -46,6 +66,7 @@ export default function LoginPage() {
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             icon={<Lock size={18} style={{ color: colors.text.muted }} />}
+            required
           />
           <button
             type="button"
@@ -69,8 +90,8 @@ export default function LoginPage() {
         </div>
         
         {/* Submit Button */}
-        <Button variant="primary" className="w-full">
-          Sign In
+        <Button variant="primary" type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? 'Signing in...' : 'Sign In'}
         </Button>
         
         {/* Register Link */}
