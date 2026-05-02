@@ -2,12 +2,20 @@
 
 import { Bell, User, LogOut } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const DashboardHeader = () => {
   const colors = getColors();
+  const { user, logout } = useAuth();
   
-  // TODO: Get user from Redux store later
-  const userName = "John Doe";
+  const userName = user?.name || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
+  
+  const handleLogout = async () => {
+    await logout();
+    // The AuthContext will handle clearing state
+    // The protected route will redirect to login
+  };
   
   return (
     <header 
@@ -38,9 +46,10 @@ export const DashboardHeader = () => {
             className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white text-sm"
             style={{ backgroundColor: colors.primary }}
           >
-            {userName.charAt(0)}
+            {userInitial}
           </div>
           <button 
+            onClick={handleLogout}
             className="p-2 rounded-lg transition-all hover:scale-105"
             style={{ color: colors.text.secondary }}
           >

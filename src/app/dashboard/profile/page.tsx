@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard/DashboardLayout';
 import { getColors } from '@/store/colorStore';
 import { Button } from '@/components/ui/Button';
@@ -8,6 +9,8 @@ import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileStats } from '@/components/profile/ProfileStats';
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
 import { Settings, Edit2, Bell, Lock, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth.service';
 
 interface UserProfile {
   name: string;
@@ -20,63 +23,92 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const colors = getColors();
+  
   const [profile, setProfile] = useState<UserProfile>({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    username: 'johndoe',
-    memberSince: 'January 2024',
-    location: 'New York, USA',
-    bio: 'Music lover and movie enthusiast. Always looking for new songs to discover!'
+    name: '',
+    email: '',
+    username: '',
+    memberSince: '',
+    location: '',
+    bio: '',
   });
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalPlays: 47,
-    friendsCount: 8,
-    watchTime: 128,
-    likedSongs: 34
+    totalPlays: 0,
+    friendsCount: 0,
+    watchTime: 0,
+    likedSongs: 0
   });
-  const colors = getColors();
 
-  // Load profile from localStorage
+  // Load profile from backend when user is available
   useEffect(() => {
-    const savedProfile = localStorage.getItem('lyrics_library_profile');
-    const savedStats = localStorage.getItem('lyrics_library_stats');
-    
-    if (savedProfile) {
-      setProfile(JSON.parse(savedProfile));
-    } else {
-      localStorage.setItem('lyrics_library_profile', JSON.stringify(profile));
+    if (user) {
+      // Format member since date
+      const memberSince = user.createdAt 
+        ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        : 'January 2024';
+      
+      setProfile({
+        name: user.name || '',
+        email: user.email || '',
+        username: user.username || '',
+        memberSince: memberSince,
+        location: '', // Will be fetched from separate API later
+        bio: '', // Will be fetched from separate API later
+      });
+      setIsLoading(false);
+      
+      // TODO: Fetch stats from backend API
+      // For now, keep placeholder stats or fetch from localStorage
+      const savedStats = localStorage.getItem('lyrics_library_stats');
+      if (savedStats) {
+        setStats(JSON.parse(savedStats));
+      }
+    } else if (!isLoading) {
+      // If no user and not loading, redirect to login
+      router.push('/login');
     }
-    
-    if (savedStats) {
-      setStats(JSON.parse(savedStats));
-    } else {
-      localStorage.setItem('lyrics_library_stats', JSON.stringify(stats));
-    }
-  }, []);
+  }, [user, router]);
 
-  // Save profile when updated
-  useEffect(() => {
-    if (profile.name !== 'John Doe') {
-      localStorage.setItem('lyrics_library_profile', JSON.stringify(profile));
-    }
-  }, [profile]);
-
-  const handleUpdateProfile = (updatedData: { name: string; username: string; location: string; bio: string }) => {
+  const handleUpdateProfile = async (updatedData: { name: string; username: string; location: string; bio: string }) => {
+    // TODO: Send update to backend API
+    // For now, update local state only
     setProfile({
       ...profile,
       name: updatedData.name,
       username: updatedData.username,
       location: updatedData.location,
-      bio: updatedData.bio
+      bio: updatedData.bio,
     });
+    
+    // Also update the user in AuthContext if name changed
+    // This would require a backend endpoint to update user profile
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
   };
 
   const settingsOptions = [
-    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences' },
-    { icon: Lock, label: 'Privacy', description: 'Control your privacy settings' },
-    { icon: LogOut, label: 'Logout', description: 'Sign out of your account', danger: true },
+    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences', onClick: () => {} },
+    { icon: Lock, label: 'Privacy', description: 'Control your privacy settings', onClick: () => {} },
+    { icon: LogOut, label: 'Logout', description: 'Sign out of your account', danger: true, onClick: handleLogout },
   ];
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-transparent" style={{ borderColor: colors.primary }} />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -173,6 +205,7 @@ export default function ProfilePage() {
                   return (
                     <button
                       key={idx}
+                      onClick={option.onClick}
                       className="w-full p-3 rounded-lg text-left transition-all hover:scale-105"
                       style={{ 
                         backgroundColor: colors.background,
