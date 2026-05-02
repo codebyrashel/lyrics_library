@@ -11,7 +11,8 @@ import {
   Music2,
   Menu,
   X,
-  DoorOpen
+  DoorOpen,
+  MessageCircle
 } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 
@@ -20,6 +21,7 @@ const navItems = [
   { name: 'Rooms', icon: DoorOpen, href: '/dashboard/rooms', exact: false },
   { name: 'Library', icon: Library, href: '/dashboard/library', exact: false },
   { name: 'Friends', icon: Users, href: '/dashboard/friends', exact: false },
+  { name: 'Messages', icon: MessageCircle, href: '/dashboard/messages', exact: false },
   { name: 'Profile', icon: User, href: '/dashboard/profile', exact: false },
 ];
 
