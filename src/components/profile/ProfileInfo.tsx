@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Mail, Calendar, Globe } from 'lucide-react';
+import { User, Mail, Calendar, Globe, FileText } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 
 interface ProfileInfoProps {
@@ -39,7 +39,7 @@ export const ProfileInfo = ({ name, email, username, memberSince, location, bio 
           const Icon = item.icon;
           return (
             <div key={idx} className="flex items-start gap-3">
-              <Icon size={18} style={{ color: colors.text.muted }} className="mt-0.5" />
+              <Icon size={18} style={{ color: colors.text.muted }} className="mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="text-xs uppercase tracking-wide" style={{ color: colors.text.muted }}>
                   {item.label}
@@ -52,19 +52,23 @@ export const ProfileInfo = ({ name, email, username, memberSince, location, bio 
           );
         })}
         
-        {bio && (
-          <div className="flex items-start gap-3">
-            <div className="w-4.5" />
-            <div className="flex-1">
-              <p className="text-xs uppercase tracking-wide" style={{ color: colors.text.muted }}>
-                Bio
-              </p>
+        <div className="flex items-start gap-3">
+          <FileText size={18} style={{ color: colors.text.muted }} className="mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs uppercase tracking-wide" style={{ color: colors.text.muted }}>
+              Bio
+            </p>
+            {bio ? (
               <p className="text-sm" style={{ color: colors.text.secondary }}>
                 {bio}
               </p>
-            </div>
+            ) : (
+              <p className="text-sm italic" style={{ color: colors.text.muted }}>
+                No bio yet. Click Edit Profile to add one.
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

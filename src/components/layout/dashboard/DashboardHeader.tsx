@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Bell, User, LogOut } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,11 +11,10 @@ export const DashboardHeader = () => {
   
   const userName = user?.name || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
+  const userAvatar = user?.avatar || null;
   
   const handleLogout = async () => {
     await logout();
-    // The AuthContext will handle clearing state
-    // The protected route will redirect to login
   };
   
   return (
@@ -43,10 +43,20 @@ export const DashboardHeader = () => {
         {/* User Menu */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white text-sm"
+            className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white text-sm overflow-hidden"
             style={{ backgroundColor: colors.primary }}
           >
-            {userInitial}
+            {userAvatar ? (
+              <Image 
+                src={userAvatar} 
+                alt={userName} 
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              userInitial
+            )}
           </div>
           <button 
             onClick={handleLogout}

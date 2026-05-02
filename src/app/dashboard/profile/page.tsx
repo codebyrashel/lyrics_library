@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileStats } from '@/components/profile/ProfileStats';
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
-import { Settings, Edit2, Bell, Lock, LogOut } from 'lucide-react';
+import { AvatarUploadModal } from '@/components/profile/AvatarUploadModal';
+import { Settings, Edit2, Bell, Lock, LogOut, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
+import Image from 'next/image';
 
 interface UserProfile {
   name: string;
@@ -24,9 +26,9 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const colors = getColors();
-  
+
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
     email: '',
@@ -36,6 +38,8 @@ export default function ProfilePage() {
     bio: '',
   });
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalPlays: 0,
@@ -47,46 +51,57 @@ export default function ProfilePage() {
   // Load profile from backend when user is available
   useEffect(() => {
     if (user) {
-      // Format member since date
-      const memberSince = user.createdAt 
+      const memberSince = user.createdAt
         ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
         : 'January 2024';
-      
+
       setProfile({
         name: user.name || '',
         email: user.email || '',
         username: user.username || '',
         memberSince: memberSince,
-        location: '', // Will be fetched from separate API later
-        bio: '', // Will be fetched from separate API later
+        location: '',
+        bio: '',
       });
+
+      if (user.avatar) {
+        setAvatarUrl(user.avatar);
+      }
+
       setIsLoading(false);
-      
-      // TODO: Fetch stats from backend API
-      // For now, keep placeholder stats or fetch from localStorage
+
       const savedStats = localStorage.getItem('lyrics_library_stats');
       if (savedStats) {
         setStats(JSON.parse(savedStats));
       }
     } else if (!isLoading) {
-      // If no user and not loading, redirect to login
       router.push('/login');
     }
   }, [user, router]);
 
   const handleUpdateProfile = async (updatedData: { name: string; username: string; location: string; bio: string }) => {
-    // TODO: Send update to backend API
-    // For now, update local state only
-    setProfile({
-      ...profile,
-      name: updatedData.name,
-      username: updatedData.username,
-      location: updatedData.location,
-      bio: updatedData.bio,
-    });
-    
-    // Also update the user in AuthContext if name changed
-    // This would require a backend endpoint to update user profile
+    const response = await authService.updateProfile(updatedData);
+    if (response.success) {
+      // Refresh user data from backend
+      await refreshUser();
+      
+      setProfile({
+        ...profile,
+        name: updatedData.name,
+        username: updatedData.username,
+        location: updatedData.location,
+        bio: updatedData.bio,
+      });
+    }
+  };
+
+  const handleAvatarSave = async (blob: Blob) => {
+    const response = await authService.uploadAvatar(blob);
+    if (response.success && response.avatar) {
+      setAvatarUrl(response.avatar);
+      // Refresh user data to update avatar in context
+      await refreshUser();
+    }
   };
 
   const handleLogout = async () => {
@@ -95,8 +110,8 @@ export default function ProfilePage() {
   };
 
   const settingsOptions = [
-    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences', onClick: () => {} },
-    { icon: Lock, label: 'Privacy', description: 'Control your privacy settings', onClick: () => {} },
+    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences', onClick: () => { } },
+    { icon: Lock, label: 'Privacy', description: 'Control your privacy settings', onClick: () => { } },
     { icon: LogOut, label: 'Logout', description: 'Sign out of your account', danger: true, onClick: handleLogout },
   ];
 
@@ -113,7 +128,6 @@ export default function ProfilePage() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: colors.text.primary }}>
@@ -129,27 +143,44 @@ export default function ProfilePage() {
           </Button>
         </div>
 
-        {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Profile Info & Stats */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Profile Card with Avatar */}
-            <div 
+            <div
               className="rounded-xl p-6"
-              style={{ 
+              style={{
                 backgroundColor: colors.surface,
                 border: `1px solid ${colors.surface}`
               }}
             >
               <div className="flex items-center gap-4">
-                {/* Avatar */}
-                <div 
-                  className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  {profile.name.charAt(0).toUpperCase()}
+                <div className="relative group">
+                  <div
+                    className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white cursor-pointer overflow-hidden"
+                    style={{ backgroundColor: colors.primary }}
+                    onClick={() => setShowAvatarModal(true)}
+                  >
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt="Avatar"
+                        className="object-cover"
+                        width={100}
+                        height={100}
+                        unoptimized
+                      />
+                    ) : (
+                      profile.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowAvatarModal(true)}
+                    className="absolute bottom-0 right-0 p-1.5 rounded-full bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    style={{ color: colors.primary }}
+                  >
+                    <Camera size={14} />
+                  </button>
                 </div>
-                
+
                 <div className="flex-1">
                   <h2 className="text-xl font-bold" style={{ color: colors.text.primary }}>
                     {profile.name}
@@ -165,8 +196,8 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-            
-            <ProfileInfo 
+
+            <ProfileInfo
               name={profile.name}
               email={profile.email}
               username={profile.username}
@@ -174,20 +205,19 @@ export default function ProfilePage() {
               location={profile.location}
               bio={profile.bio}
             />
-            
-            <ProfileStats 
+
+            <ProfileStats
               totalPlays={stats.totalPlays}
               friendsCount={stats.friendsCount}
               watchTime={stats.watchTime}
               likedSongs={stats.likedSongs}
             />
           </div>
-          
-          {/* Right Column - Settings */}
+
           <div className="space-y-6">
-            <div 
+            <div
               className="rounded-xl p-6"
-              style={{ 
+              style={{
                 backgroundColor: colors.surface,
                 border: `1px solid ${colors.surface}`
               }}
@@ -198,7 +228,7 @@ export default function ProfilePage() {
                   Settings
                 </h2>
               </div>
-              
+
               <div className="space-y-3">
                 {settingsOptions.map((option, idx) => {
                   const Icon = option.icon;
@@ -207,7 +237,7 @@ export default function ProfilePage() {
                       key={idx}
                       onClick={option.onClick}
                       className="w-full p-3 rounded-lg text-left transition-all hover:scale-105"
-                      style={{ 
+                      style={{
                         backgroundColor: colors.background,
                         border: `1px solid ${colors.surface}`
                       }}
@@ -228,17 +258,16 @@ export default function ProfilePage() {
                 })}
               </div>
             </div>
-            
-            {/* Account Status */}
-            <div 
+
+            <div
               className="rounded-xl p-6 text-center"
-              style={{ 
+              style={{
                 backgroundColor: `${colors.status.success}10`,
                 border: `1px solid ${colors.status.success}20`
               }}
             >
               <div className="text-sm font-semibold mb-1" style={{ color: colors.status.success }}>
-                ✓ Account Active
+                Account Active
               </div>
               <p className="text-xs" style={{ color: colors.text.muted }}>
                 Your account is in good standing
@@ -248,7 +277,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
       <EditProfileModal
         isOpen={showEditModal}
         userData={{
@@ -259,6 +287,13 @@ export default function ProfilePage() {
         }}
         onClose={() => setShowEditModal(false)}
         onSave={handleUpdateProfile}
+      />
+
+      <AvatarUploadModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSave={handleAvatarSave}
+        currentAvatar={avatarUrl || undefined}
       />
     </DashboardLayout>
   );

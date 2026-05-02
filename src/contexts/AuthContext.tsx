@@ -9,6 +9,7 @@ interface AuthContextType extends AuthState {
   register: (name: string, username: string, email: string, password: string, confirmPassword: string) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,6 +63,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     checkAuth();
   }, []);
+
+  const refreshUser = async () => {
+    if (!authService.isAuthenticated()) return;
+    
+    const response = await authService.getCurrentUser();
+    if (response.success && response.user) {
+      setState(prev => ({
+        ...prev,
+        user: response.user,
+        isAuthenticated: true,
+      }));
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -147,6 +161,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         clearError,
+        refreshUser,
       }}
     >
       {children}
