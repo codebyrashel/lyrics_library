@@ -1,6 +1,5 @@
 'use client';
 
-// import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard/DashboardLayout';
 import { getColors } from '@/store/colorStore';
 import { FriendsHeader } from '@/components/friends/FriendsHeader';

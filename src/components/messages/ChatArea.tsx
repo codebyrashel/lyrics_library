@@ -66,7 +66,7 @@ export const ChatArea = ({ conversation, messages, onSendMessage, isLoading }: C
             style={{ backgroundColor: colors.primary }}
           >
             {conversation.participant.avatar ? (
-              <Image src={conversation.participant.avatar} alt="" className="w-full h-full object-cover rounded-full" />
+              <Image src={conversation.participant.avatar} alt="" width={100} height={100} className="w-full h-full object-cover rounded-full" />
             ) : (
               conversation.participant.name.charAt(0).toUpperCase()
             )}

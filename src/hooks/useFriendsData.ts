@@ -1,136 +1,119 @@
-import { useState, useEffect } from 'react';
+'use client';
 
-interface Friend {
-  id: string;
-  name: string;
-  username: string;
-  status: 'online' | 'offline' | 'away';
-  avatar?: string;
-}
+import { useState, useEffect, useCallback } from 'react';
+import { friendsService, Friend, FriendRequest } from '@/services/friends.service';
 
-interface FriendRequest {
-  id: string;
-  name: string;
-  username: string;
-  avatar?: string;
-}
-
-export function useFriendsData() {
+export const useFriendsData = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // Load friends from localStorage
+  // Load friends and requests on mount
   useEffect(() => {
-    const savedFriends = localStorage.getItem('lyrics_library_friends');
-    const savedRequests = localStorage.getItem('lyrics_library_friend_requests');
-    
-    if (savedFriends) {
-      setFriends(JSON.parse(savedFriends));
-    } else {
-      const defaultFriends = [
-        { id: '1', name: 'Sarah Johnson', username: 'sarah_j', status: 'online' as const },
-        { id: '2', name: 'Michael Chen', username: 'mike_chen', status: 'offline' as const },
-        { id: '3', name: 'Emma Rodriguez', username: 'emma_r', status: 'away' as const },
-      ];
-      setFriends(defaultFriends);
-      localStorage.setItem('lyrics_library_friends', JSON.stringify(defaultFriends));
-    }
-    
-    if (savedRequests) {
-      setFriendRequests(JSON.parse(savedRequests));
-    } else {
-      const defaultRequests = [
-        { id: 'req1', name: 'David Kim', username: 'david_kim' },
-        { id: 'req2', name: 'Lisa Thompson', username: 'lisa_t' },
-      ];
-      setFriendRequests(defaultRequests);
-      localStorage.setItem('lyrics_library_friend_requests', JSON.stringify(defaultRequests));
-    }
+    loadAllData();
   }, []);
 
-  // Save to localStorage when data changes
-  useEffect(() => {
-    if (friends.length > 0) {
-      localStorage.setItem('lyrics_library_friends', JSON.stringify(friends));
-    }
-  }, [friends]);
-  
-  useEffect(() => {
-    if (friendRequests.length > 0) {
-      localStorage.setItem('lyrics_library_friend_requests', JSON.stringify(friendRequests));
-    }
-  }, [friendRequests]);
+  const loadAllData = async () => {
+    setIsInitialLoading(true);
+    await Promise.all([loadFriends(), loadRequests()]);
+    setIsInitialLoading(false);
+  };
 
-  const sendFriendRequest = (username: string) => {
+  const loadFriends = async () => {
+    const response = await friendsService.getFriends();
+    if (response.success && response.friends) {
+      setFriends(response.friends);
+    }
+  };
+
+  const loadRequests = async () => {
+    const response = await friendsService.getFriendRequests();
+    if (response.success && response.requests) {
+      setFriendRequests(response.requests);
+    }
+  };
+
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const sendFriendRequest = async (username: string) => {
     setIsLoading(true);
-    
-    setTimeout(() => {
-      if (friends.some(f => f.username === username)) {
-        setMessage({ type: 'error', text: 'Already friends with this user!' });
-        setIsLoading(false);
-        return;
-      }
-      
-      if (friendRequests.some(r => r.username === username)) {
-        setMessage({ type: 'error', text: 'Friend request already sent!' });
-        setIsLoading(false);
-        return;
-      }
-      
-      const newRequest = {
-        id: Date.now().toString(),
-        name: username,
-        username: username,
-      };
-      setFriendRequests([...friendRequests, newRequest]);
-      setMessage({ type: 'success', text: `Friend request sent to @${username}!` });
-      setIsLoading(false);
-      
-      setTimeout(() => setMessage(null), 3000);
-    }, 500);
-  };
-
-  const acceptRequest = (requestId: string) => {
-    const request = friendRequests.find(r => r.id === requestId);
-    if (request) {
-      const newFriend: Friend = {
-        id: request.id,
-        name: request.name,
-        username: request.username,
-        status: 'offline',
-      };
-      setFriends([...friends, newFriend]);
-      setFriendRequests(friendRequests.filter(r => r.id !== requestId));
-      setMessage({ type: 'success', text: `You are now friends with ${request.name}!` });
-      setTimeout(() => setMessage(null), 3000);
+    const response = await friendsService.sendFriendRequest(username);
+    if (response.success) {
+      showMessage('success', `Friend request sent to @${username}`);
+      await loadRequests(); // Refresh requests (outgoing)
+    } else {
+      showMessage('error', response.message || 'Failed to send request');
     }
+    setIsLoading(false);
   };
 
-  const rejectRequest = (requestId: string) => {
-    setFriendRequests(friendRequests.filter(r => r.id !== requestId));
-    setMessage({ type: 'success', text: 'Friend request rejected' });
-    setTimeout(() => setMessage(null), 3000);
+  const acceptRequest = async (requestId: string) => {
+    setIsLoading(true);
+    const response = await friendsService.acceptRequest(requestId);
+    if (response.success) {
+      showMessage('success', 'Friend request accepted');
+      await Promise.all([loadFriends(), loadRequests()]);
+    } else {
+      showMessage('error', response.message || 'Failed to accept request');
+    }
+    setIsLoading(false);
   };
 
-  const removeFriend = (friendId: string) => {
-    setFriends(friends.filter(f => f.id !== friendId));
-    setMessage({ type: 'success', text: 'Friend removed' });
-    setTimeout(() => setMessage(null), 3000);
+  const rejectRequest = async (requestId: string) => {
+    setIsLoading(true);
+    const response = await friendsService.rejectRequest(requestId);
+    if (response.success) {
+      showMessage('success', 'Friend request rejected');
+      await loadRequests();
+    } else {
+      showMessage('error', response.message || 'Failed to reject request');
+    }
+    setIsLoading(false);
   };
+
+  const removeFriend = async (friendId: string) => {
+    setIsLoading(true);
+    const response = await friendsService.removeFriend(friendId);
+    if (response.success) {
+      showMessage('success', 'Friend removed');
+      await loadFriends();
+    } else {
+      showMessage('error', response.message || 'Failed to remove friend');
+    }
+    setIsLoading(false);
+  };
+
+  // Subscribe to WebSocket events for real-time updates
+  useEffect(() => {
+    // This will be expanded when WebSocket events are added
+    // For now, we just poll when tab changes
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadFriends();
+        loadRequests();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return {
     friends,
     friendRequests,
     activeTab,
     setActiveTab,
-    isLoading,
+    isLoading: isInitialLoading || isLoading,
     message,
     sendFriendRequest,
     acceptRequest,
     rejectRequest,
     removeFriend,
+    refreshData: loadAllData,
   };
-}
+};

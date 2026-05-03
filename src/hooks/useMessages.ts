@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import { messageService } from '@/services/message.service';
 import { wsService } from '@/services/websocket.service';
@@ -67,6 +69,38 @@ export const useMessages = () => {
     return false;
   }, [selectedConversation]);
 
+  // Start a new conversation with a friend
+  const startConversation = useCallback(async (friendId: string, friendName: string, friendUsername: string) => {
+    // Check if conversation already exists
+    const existing = conversations.find(c => c.participant.id === friendId);
+    if (existing) {
+      selectConversation(existing);
+      return existing;
+    }
+
+    // Create a temporary conversation (will be replaced by backend when message is sent)
+    const tempConversation: Conversation = {
+      id: `temp-${friendId}`,
+      participant: {
+        id: friendId,
+        name: friendName,
+        username: friendUsername,
+        isOnline: false,
+      },
+      lastMessage: {
+        content: '',
+        timestamp: new Date().toISOString(),
+        isRead: true,
+        isFromMe: false,
+      },
+      unreadCount: 0,
+    };
+    
+    setConversations(prev => [tempConversation, ...prev]);
+    selectConversation(tempConversation);
+    return tempConversation;
+  }, [conversations, selectConversation]);
+
   // Handle incoming WebSocket messages
   useEffect(() => {
     const handleNewMessage = (data: any) => {
@@ -96,9 +130,9 @@ export const useMessages = () => {
     loadConversations();
     
     // Connect WebSocket if not already connected
-    // if (!wsService.isConnected()) {
-    //   wsService.connect();
-    // }
+    if (!wsService.isConnected()) {
+      wsService.connect();
+    }
   }, [loadConversations]);
 
   return {
@@ -110,6 +144,7 @@ export const useMessages = () => {
     newMessageReceived,
     selectConversation,
     sendMessage,
+    startConversation,
     refreshConversations: loadConversations,
   };
 };

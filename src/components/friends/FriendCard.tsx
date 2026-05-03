@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { User, MessageCircle, UserMinus, Video } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import Image from 'next/image';
@@ -15,7 +16,8 @@ interface FriendCardProps {
   onRemove: () => void;
 }
 
-export const FriendCard = ({ name, username, status, avatar, onMessage, onInvite, onRemove }: FriendCardProps) => {
+export const FriendCard = ({ id, name, username, status, avatar, onMessage, onInvite, onRemove }: FriendCardProps) => {
+  const router = useRouter();
   const colors = getColors();
   
   const statusColors = {
@@ -28,6 +30,12 @@ export const FriendCard = ({ name, username, status, avatar, onMessage, onInvite
     online: 'Online',
     offline: 'Offline',
     away: 'Away'
+  };
+
+  const handleMessage = () => {
+    // Navigate to messages page with friend ID in query param
+    router.push(`/dashboard/messages?friendId=${id}&name=${encodeURIComponent(name)}&username=${encodeURIComponent(username)}`);
+    onMessage();
   };
   
   return (
@@ -46,7 +54,7 @@ export const FriendCard = ({ name, username, status, avatar, onMessage, onInvite
             style={{ backgroundColor: colors.primary }}
           >
             {avatar ? (
-              <Image src={avatar} alt={name} className="w-full h-full rounded-full object-cover" />
+              <Image src={avatar} alt={name} width={100} height={100} className="w-full h-full rounded-full object-cover" />
             ) : (
               name.charAt(0).toUpperCase()
             )}
@@ -76,7 +84,7 @@ export const FriendCard = ({ name, username, status, avatar, onMessage, onInvite
         {/* Actions */}
         <div className="flex gap-1">
           <button
-            onClick={onMessage}
+            onClick={handleMessage}
             className="p-2 rounded-lg transition-all hover:scale-105"
             style={{ color: colors.text.secondary }}
             title="Send Message"
