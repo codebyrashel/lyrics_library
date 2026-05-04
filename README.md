@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lyrics Library
 
-## Getting Started
+IMPORTANT LEGAL NOTICE - READ CAREFULLY
 
-First, run the development server:
+License Status
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This project is NOT OPEN SOURCE. All rights are reserved.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+What you MAY do:
+- View the source code for educational or review purposes
+- Read the documentation and README files
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+What you MAY NOT do:
+- Clone this repository
+- Fork this repository
+- Copy any portion of the code
+- Download or save the code locally
+- Modify, adapt, or create derivative works
+- Use any part of the code in your own projects
+- Distribute, share, or transmit the code in any form
+- Decompile, reverse engineer, or attempt to extract the source logic
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Important Clarification
 
-## Learn More
+This repository is made public on GitHub for showcase purposes only. Making code publicly viewable does NOT grant you any rights to use, copy, or distribute it.
 
-To learn more about Next.js, take a look at the following resources:
+Under international copyright law, unauthorized copying, distribution, or creation of derivative works constitutes copyright infringement and may subject you to legal penalties, including statutory damages and legal fees.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Full License Terms
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See the LICENSE file in this repository for complete legal terms.
 
-## Deploy on Vercel
+Enforcement
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Violations of this license will result in:
+1. Immediate DMCA takedown notices to any hosting platforms
+2. Legal action for copyright infringement
+3. Pursuit of statutory damages under applicable copyright laws
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contact
+
+For licensing inquiries or permission requests, contact: your-email@example.com
+
+By viewing this repository, you acknowledge and agree to these terms.
