@@ -1,5 +1,3 @@
-# Lyrics Library
-
 IMPORTANT LEGAL NOTICE - READ CAREFULLY
 
 License Status
