@@ -3,7 +3,7 @@
 import { Trash2, Music, Video, GripVertical } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { useRoomStore } from '@/store/roomStore';
-import { AddMedia } from './AddMedia';
+import { AddMedia } from './addMedia/AddMedia';
 
 export const Queue = () => {
   const colors = getColors();

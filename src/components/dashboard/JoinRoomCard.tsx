@@ -1,19 +1,25 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { LogIn, DoorOpen } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 import { Button } from '@/components/ui/Button';
+import { wsService } from '@/services/websocket.service';
 
 interface JoinRoomCardProps {
-  onJoinRoom: (roomCode: string) => void;
-  isJoining: boolean;
+  onJoinRoom?: (roomCode: string) => void;
+  isJoining?: boolean;
 }
 
-export const JoinRoomCard = ({ onJoinRoom, isJoining }: JoinRoomCardProps) => {
+export const JoinRoomCard = ({ onJoinRoom, isJoining: externalIsJoining }: JoinRoomCardProps) => {
+  const router = useRouter();
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
+  const [internalIsJoining, setInternalIsJoining] = useState(false);
   const colors = getColors();
+
+  const isJoining = externalIsJoining !== undefined ? externalIsJoining : internalIsJoining;
 
   const validateRoomCode = (code: string) => {
     if (!code.trim()) {
@@ -28,10 +34,65 @@ export const JoinRoomCard = ({ onJoinRoom, isJoining }: JoinRoomCardProps) => {
     return true;
   };
 
-  const handleSubmit = () => {
+  const joinRoom = async (roomId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/rooms/${roomId}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Get room details
+        const roomResponse = await fetch(`http://localhost:8080/api/rooms/${roomId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        });
+        const roomData = await roomResponse.json();
+
+        if (roomData.success) {
+          // Notify via WebSocket that user joined
+          wsService.send('room:join', {
+            roomId,
+            userId: localStorage.getItem('user_id'),
+            name: roomData.room?.name,
+          });
+
+          // Navigate to room
+          router.push(`/room/${roomId}?name=${encodeURIComponent(roomData.room?.name || 'Room')}`);
+        } else {
+          setError(roomData.message || 'Failed to get room details');
+        }
+      } else {
+        setError(data.message || 'Room not found or inactive');
+      }
+    } catch (err) {
+      console.error('Join room error:', err);
+      setError('Failed to connect to server. Please try again.');
+    } finally {
+      setInternalIsJoining(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     const cleaned = roomCode.trim().toLowerCase();
-    if (validateRoomCode(cleaned)) {
+    if (!validateRoomCode(cleaned)) return;
+
+    setInternalIsJoining(true);
+    setError('');
+
+    if (onJoinRoom) {
+      // If external handler is provided, use it
       onJoinRoom(cleaned);
+      setInternalIsJoining(false);
+    } else {
+      // Otherwise use the internal join logic
+      await joinRoom(cleaned);
     }
   };
 

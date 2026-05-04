@@ -2,13 +2,19 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useRoomStore } from '@/store/roomStore';
+import { wsService } from '@/services/websocket.service';
 import { LocalControls } from './LocalControls';
 
-export const LocalVideoPlayer = () => {
+interface LocalVideoPlayerProps {
+  roomId: string;
+}
+
+export const LocalVideoPlayer = ({ roomId }: LocalVideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showControls, setShowControls] = useState(true);
   const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null);
+  const isSyncingRef = useRef(false); // Prevent feedback loops
   
   const currentPlaying = useRoomStore((state) => state.currentPlaying);
   const isPlaying = useRoomStore((state) => state.isPlaying);
@@ -22,7 +28,6 @@ export const LocalVideoPlayer = () => {
   const playNext = useRoomStore((state) => state.playNext);
   const duration = useRoomStore((state) => state.duration);
 
-  // Don't return early - move the check inside the render
   const showControlsWithTimeout = () => {
     setShowControls(true);
     if (controlsTimeout) clearTimeout(controlsTimeout);
@@ -32,6 +37,7 @@ export const LocalVideoPlayer = () => {
     setControlsTimeout(timeout);
   };
 
+  // Sync video with store (for local actions)
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !currentPlaying) return;
@@ -42,6 +48,19 @@ export const LocalVideoPlayer = () => {
       video.pause();
     }
   }, [isPlaying, currentPlaying]);
+
+  // Sync time position from store (when seeking from other users)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentPlaying) return;
+    if (isSyncingRef.current) return;
+    
+    if (Math.abs(video.currentTime - currentTime) > 0.5) {
+      isSyncingRef.current = true;
+      video.currentTime = currentTime;
+      setTimeout(() => { isSyncingRef.current = false; }, 100);
+    }
+  }, [currentTime, currentPlaying]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -56,17 +75,35 @@ export const LocalVideoPlayer = () => {
   }, [playbackRate]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    // Broadcast to room
+    wsService.send('playback:playpause', {
+      roomId,
+      isPlaying: newPlayingState,
+    });
+  };
+
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    if (videoRef.current) videoRef.current.currentTime = time;
+    
+    // Broadcast to room
+    wsService.send('playback:seek', {
+      roomId,
+      currentTime: time,
+    });
   };
 
   const handleSeekBackward = () => {
-    setCurrentTime(Math.max(0, currentTime - 10));
-    if (videoRef.current) videoRef.current.currentTime = Math.max(0, currentTime - 10);
+    const newTime = Math.max(0, currentTime - 10);
+    handleSeek(newTime);
   };
 
   const handleSeekForward = () => {
-    setCurrentTime(currentTime + 10);
-    if (videoRef.current) videoRef.current.currentTime = currentTime + 10;
+    const newTime = currentTime + 10;
+    handleSeek(newTime);
   };
 
   const handleVideoEvent = (type: string) => {
@@ -74,18 +111,64 @@ export const LocalVideoPlayer = () => {
     if (!video) return;
     
     switch(type) {
-      case 'play': setIsPlaying(true); break;
-      case 'pause': setIsPlaying(false); break;
-      case 'timeupdate': setCurrentTime(video.currentTime); break;
-      case 'loadedmetadata': setDuration(video.duration); break;
-      case 'ended': playNext(); break;
+      case 'play':
+        if (!isSyncingRef.current) {
+          setIsPlaying(true);
+          wsService.send('playback:playpause', { roomId, isPlaying: true });
+        }
+        break;
+      case 'pause':
+        if (!isSyncingRef.current) {
+          setIsPlaying(false);
+          wsService.send('playback:playpause', { roomId, isPlaying: false });
+        }
+        break;
+      case 'timeupdate':
+        if (!isSyncingRef.current && Math.abs(video.currentTime - currentTime) > 1) {
+          setCurrentTime(video.currentTime);
+          wsService.send('playback:seek', { roomId, currentTime: video.currentTime });
+        }
+        break;
+      case 'loadedmetadata':
+        setDuration(video.duration);
+        break;
+      case 'ended':
+        playNext();
+        break;
     }
   };
 
-  // Check if there's no media to play - but don't return early before hooks
-  if (!currentPlaying) {
-    return null;
-  }
+  // Listen for remote playback events
+  useEffect(() => {
+    const handleRemotePlayPause = (data: any) => {
+      if (data.roomId === roomId && data.userId !== localStorage.getItem('user_id')) {
+        isSyncingRef.current = true;
+        setIsPlaying(data.isPlaying);
+        setTimeout(() => { isSyncingRef.current = false; }, 100);
+      }
+    };
+
+    const handleRemoteSeek = (data: any) => {
+      if (data.roomId === roomId && data.userId !== localStorage.getItem('user_id')) {
+        isSyncingRef.current = true;
+        setCurrentTime(data.currentTime);
+        if (videoRef.current) {
+          videoRef.current.currentTime = data.currentTime;
+        }
+        setTimeout(() => { isSyncingRef.current = false; }, 100);
+      }
+    };
+
+    wsService.on('playback:playpause', handleRemotePlayPause);
+    wsService.on('playback:seek', handleRemoteSeek);
+
+    return () => {
+      wsService.off('playback:playpause', handleRemotePlayPause);
+      wsService.off('playback:seek', handleRemoteSeek);
+    };
+  }, [roomId, setIsPlaying, setCurrentTime]);
+
+  if (!currentPlaying) return null;
 
   return (
     <div 
@@ -113,10 +196,7 @@ export const LocalVideoPlayer = () => {
           currentTime={currentTime}
           duration={duration}
           onPlayPause={handlePlayPause}
-          onSeek={(time) => {
-            setCurrentTime(time);
-            if (videoRef.current) videoRef.current.currentTime = time;
-          }}
+          onSeek={handleSeek}
           onSeekBackward={handleSeekBackward}
           onSeekForward={handleSeekForward}
         />

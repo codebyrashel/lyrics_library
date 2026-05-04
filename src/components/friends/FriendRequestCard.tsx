@@ -31,7 +31,7 @@ export const FriendRequestCard = ({ name, username, avatar, onAccept, onReject }
           style={{ backgroundColor: colors.primary }}
         >
           {avatar ? (
-            <Image src={avatar} alt={name} className="w-full h-full rounded-full object-cover" />
+            <Image src={avatar} alt={name} width={100} height={100} unoptimized className="w-full h-full rounded-full object-cover" />
           ) : (
             name.charAt(0).toUpperCase()
           )}

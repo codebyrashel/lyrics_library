@@ -53,6 +53,7 @@ export const DashboardHeader = () => {
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             ) : (
               userInitial

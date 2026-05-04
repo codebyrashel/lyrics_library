@@ -10,40 +10,17 @@ import { RecentHistory } from '@/components/dashboard/RecentHistory';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getColors } from '@/store/colorStore';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Mock data
-const mockHistoryItems = [
-  {
-    id: '1',
-    title: 'Bohemian Rhapsody',
-    artist: 'Queen',
-    type: 'online' as const,
-    source: 'youtube',
-    playedAt: new Date().toISOString(),
-    roomId: 'cool-vibes-abc',
-    isAvailable: true
-  },
-  {
-    id: '2',
-    title: 'Shape of You',
-    artist: 'Ed Sheeran',
-    type: 'local' as const,
-    source: 'local',
-    playedAt: new Date(Date.now() - 86400000).toISOString(),
-    roomId: 'cool-vibes-abc',
-    isAvailable: true
-  }
-];
+import { wsService } from '@/services/websocket.service';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roomsCreated, setRoomsCreated] = useState(0);
-  const [historyItems, setHistoryItems] = useState(mockHistoryItems);
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
 
   const colors = getColors();
 
@@ -54,13 +31,71 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // FIXED: moved before any return
+  // Load rooms created by user from backend
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const roomCount = Object.keys(localStorage)
-        .filter(k => k.startsWith('room_')).length;
-      setRoomsCreated(roomCount);
-    }
+    const loadUserRooms = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8080/api/users/${user.id}/rooms`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setRoomsCreated(data.rooms.length);
+        }
+      } catch (error) {
+        console.error('Failed to load user rooms:', error);
+      }
+    };
+
+    loadUserRooms();
+  }, [user]);
+
+  // Load history from backend
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/users/history`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success && data.history) {
+          setHistoryItems(data.history);
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+        // Fallback to mock data if backend not ready
+        setHistoryItems([
+          {
+            id: '1',
+            title: 'Bohemian Rhapsody',
+            artist: 'Queen',
+            type: 'online' as const,
+            source: 'youtube',
+            playedAt: new Date().toISOString(),
+            roomId: 'cool-vibes-abc',
+            isAvailable: true
+          },
+          {
+            id: '2',
+            title: 'Shape of You',
+            artist: 'Ed Sheeran',
+            type: 'local' as const,
+            source: 'local',
+            playedAt: new Date(Date.now() - 86400000).toISOString(),
+            roomId: 'cool-vibes-abc',
+            isAvailable: true
+          }
+        ]);
+      }
+    };
+
+    loadHistory();
   }, []);
 
   // Auto-clear error
@@ -71,10 +106,79 @@ export default function DashboardPage() {
     }
   }, [error]);
 
+  const createRoom = async (roomName: string) => {
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      const response = await fetch('http://localhost:8080/api/rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({ name: roomName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update rooms created count
+        setRoomsCreated(prev => prev + 1);
+        
+        // Navigate to the new room
+        router.push(`/room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true`);
+      } else {
+        setError(data.message || 'Failed to create room');
+        setIsCreating(false);
+      }
+    } catch (err) {
+      console.error('Create room error:', err);
+      setError('Failed to create room. Please try again.');
+      setIsCreating(false);
+    }
+  };
+
+  const joinRoom = async (roomCode: string) => {
+    setIsJoining(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/rooms/${roomCode}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Notify via WebSocket
+        wsService.send('room:join', {
+          roomId: roomCode,
+          userId: user?.id,
+          name: user?.name,
+        });
+
+        // Navigate to the room
+        router.push(`/room/${roomCode}?name=${encodeURIComponent(data.roomName || 'Room')}`);
+      } else {
+        setError(data.message || 'Room not found. Please check the code and try again.');
+        setIsJoining(false);
+      }
+    } catch (err) {
+      console.error('Join room error:', err);
+      setError('Failed to join room. Please try again.');
+      setIsJoining(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-transparent" style={{ borderColor: colors.primary }} />
       </div>
     );
   }
@@ -86,58 +190,6 @@ export default function DashboardPage() {
   const totalPlays = historyItems.length;
   const hoursListened = Math.floor(totalPlays * 3.5);
   const missingCount = historyItems.filter(i => !i.isAvailable).length;
-
-  const createRoom = async (roomName: string) => {
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const adjectives = ['cool', 'vibes', 'chill', 'sweet', 'lively', 'cozy'];
-      const nouns = ['music', 'beats', 'sounds', 'waves', 'notes', 'tunes'];
-
-      const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
-      const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-
-      const roomId = `${randomAdj}-${randomNoun}-${Math.random()
-        .toString(36)
-        .substring(2, 5)}`;
-
-      const roomInfo = {
-        name: roomName,
-        createdAt: new Date().toISOString(),
-        host: 'User'
-      };
-
-      localStorage.setItem(`room_${roomId}`, JSON.stringify(roomInfo));
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      router.push(`/room/${roomId}?name=${encodeURIComponent(roomName)}&isHost=true`);
-    } catch (err) {
-      setError('Failed to create room. Please try again.');
-      setIsCreating(false);
-    }
-  };
-
-  const joinRoom = async (roomCode: string) => {
-    setIsJoining(true);
-    setError(null);
-
-    try {
-      const roomData = localStorage.getItem(`room_${roomCode}`);
-
-      if (!roomData) {
-        setError('Room not found. Please check the code and try again.');
-        setIsJoining(false);
-        return;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-      router.push(`/room/${roomCode}`);
-    } catch (err) {
-      setError('Failed to join room. Please try again.');
-      setIsJoining(false);
-    }
-  };
 
   return (
     <DashboardLayout>
@@ -156,6 +208,22 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
+
+        {/* Welcome Banner */}
+        <div
+          className="p-6 rounded-xl"
+          style={{
+            backgroundColor: `${colors.primary}10`,
+            border: `1px solid ${colors.primary}20`,
+          }}
+        >
+          <h2 className="text-xl font-semibold" style={{ color: colors.text.primary }}>
+            Welcome back, {user?.name}!
+          </h2>
+          <p className="text-sm mt-1" style={{ color: colors.text.muted }}>
+            Create a new room or join an existing one to watch together with friends
+          </p>
+        </div>
 
         {/* Stats */}
         <DashboardStats
@@ -177,7 +245,7 @@ export default function DashboardPage() {
         ) : (
           <EmptyState
             title="No listening history yet"
-            description="Start playing music to see your history here"
+            description="Start playing music in rooms to see your history here"
           />
         )}
       </div>

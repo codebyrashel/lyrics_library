@@ -16,10 +16,10 @@ export default function MessagesPage() {
     const friendId = searchParams.get('friendId');
     const friendName = searchParams.get('name');
     const friendUsername = searchParams.get('username');
-    
+
     const [isMobileView, setIsMobileView] = useState(false);
     const [showChat, setShowChat] = useState(false);
-    
+
     const {
         conversations,
         selectedConversation,
@@ -62,10 +62,10 @@ export default function MessagesPage() {
 
     const handleSendMessage = async (content: string) => {
         if (!selectedConversation) return;
-        
+
         const targetId = selectedConversation.participant.id;
         const success = await sendMessage(targetId, content);
-        
+
         if (success) {
             // Refresh conversations to update the list
             await refreshConversations();
@@ -153,6 +153,21 @@ export default function MessagesPage() {
     return (
         <DashboardLayout>
             <div className="h-[calc(100vh-120px)] flex gap-4">
+
+
+                {/* Chat Area */}
+                <div
+                    className="flex-1 rounded-xl overflow-hidden flex flex-col"
+                    style={{ backgroundColor: colors.surface }}
+                >
+                    <ChatArea
+                        conversation={selectedConversation}
+                        messages={messages}
+                        onSendMessage={handleSendMessage}
+                        isLoading={isLoadingMessages}
+                    />
+                </div>
+
                 {/* Conversations Sidebar */}
                 <div
                     className="w-80 rounded-xl overflow-hidden flex flex-col"
@@ -174,19 +189,6 @@ export default function MessagesPage() {
                             isLoading={isLoadingConversations}
                         />
                     </div>
-                </div>
-
-                {/* Chat Area */}
-                <div
-                    className="flex-1 rounded-xl overflow-hidden flex flex-col"
-                    style={{ backgroundColor: colors.surface }}
-                >
-                    <ChatArea
-                        conversation={selectedConversation}
-                        messages={messages}
-                        onSendMessage={handleSendMessage}
-                        isLoading={isLoadingMessages}
-                    />
                 </div>
             </div>
         </DashboardLayout>

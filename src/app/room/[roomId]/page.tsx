@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { VideoPlayer } from '@/components/room/players/VideoPlayer';
-import { Chat } from '@/components/room/Chat';
-import { Playlist } from '@/components/room/Playlist';
-import { Participants } from '@/components/room/Participants';
+import { Chat } from '@/components/room/chat/Chat';
+import { Playlist } from '@/components/room/playlist/Playlist';
+import { Participants } from '@/components/room/participants/Participants';
 import { LeaveRoomModal } from '@/components/room/LeaveRoomModal';
 import { getColors } from '@/store/colorStore';
 import { useRoomStore } from '@/store/roomStore';
@@ -71,16 +71,16 @@ export default function RoomPage() {
           <div className="lg:col-span-2 space-y-4">
             <VideoPlayer />
             <div className="h-96">
-              <Playlist />
+              <Playlist roomId={roomId} />
             </div>
           </div>
           
           {/* Right Column - Chat and Participants */}
           <div className="space-y-4">
             <div className="h-96">
-              <Chat />
+              <Chat roomId={roomId} />
             </div>
-            <Participants />
+            <Participants roomId={roomId} />
           </div>
         </div>
       </div>
