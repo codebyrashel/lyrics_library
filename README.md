@@ -39,6 +39,6 @@ Violations of this license will result in:
 
 Contact
 
-For licensing inquiries or permission requests, contact: your-email@example.com
+For licensing inquiries or permission requests, contact: rothstaylor@yahoo.com
 
 By viewing this repository, you acknowledge and agree to these terms.
