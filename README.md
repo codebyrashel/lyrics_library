@@ -1,3 +1,91 @@
+This project is a **collaborative media streaming platform** that enables users to watch and listen to content together in real time.
+
+Users can create shared rooms and enjoy synchronized playback with friends, family, or the public. The platform supports both **online media sources** and **user-provided content links (including user-selected local device media files played directly in the browser)**.
+
+## Tech Stack
+
+* Frontend: (Next.js)
+* Backend: (GO)
+* Real-time: WebSockets
+* Database: (PostgreSQL)
+
+>Folder Structure will be added once the documentation file is ready and then it will be added the documentation folder where you can see the folder structure
+
+## Features
+
+* **User Accounts**
+
+  * Sign up, log in, and manage personal media sessions
+
+* **Private & Public Rooms**
+
+  * Create private rooms for friends and family
+  * Host public rooms that anyone can join
+
+* **Online Media Support**
+
+  * Add and stream content from online sources (e.g., video/audio URLs, streaming platforms where embedding is allowed)
+
+* **User-Provided (Local Device Support) Media**
+
+  * Users can select media files directly from their device (PC, laptop, or phone)
+  * Files are played in the browser using client-side processing
+  * No file uploads or server storage are involved
+  * Media remains on the user’s device and is never persisted on the platform
+
+* **Synchronized Playback**
+
+  * All participants experience playback in sync (play, pause, seek)
+
+* **Real-Time Collaboration**
+
+  * Multiple users can join and watch/listen together in real time
+
+## What This Platform Does NOT Do
+
+* Does NOT host or store copyrighted media
+* Does NOT bypass DRM or platform restrictions
+* Does NOT upload or store user media files
+* Does NOT support network-shared local servers as a requirement
+
+
+All media must be accessible via valid, authorized sources.
+  * Streamed from a valid online source, or
+  * Played directly from the user’s device in the browser
+
+## How It Works
+
+1. A user creates a room
+2. They add media via:
+
+   * An **online URL** (e.g., streaming or hosted media)
+   * A **A local file selected from their device** (browser file picker)
+3. Other users join the room
+4. Playback is synchronized across all participants in real time
+
+
+## Important Considerations
+
+* Some websites may block embedding or external playback
+* Media must be legally accessible and properly authorized
+* Synchronization requires low-latency communication
+* Network-based local content must be reachable by all participants
+
+## Key Technical Note **(Important for Clarity)**
+
+Local media is handled entirely on the client side using browser capabilities (such as the File API). The platform does not upload, store, or transmit the raw media file itself only playback state is synchronized between users.
+
+
+## Future Improvements
+
+* Chat and reactions in rooms
+* Playlist support
+* Role-based controls (host, admin, viewer)
+* Mobile optimization
+* Media source integrations
+
+## License
+
 IMPORTANT LEGAL NOTICE - READ CAREFULLY
 
 License Status
@@ -40,3 +128,8 @@ Contact
 For licensing inquiries or permission requests, contact: rothstaylor@yahoo.com
 
 By viewing this repository, you acknowledge and agree to these terms.
+
+## Contributing
+
+Contributions, ideas, and feedback are welcome!
+Feel free to open issues or submit pull requests.
