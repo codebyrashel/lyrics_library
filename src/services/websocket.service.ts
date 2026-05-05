@@ -12,27 +12,24 @@ class WebSocketService {
   private pongTimeout: NodeJS.Timeout | null = null;
   private connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
 
+  // Connect to WebSocket server
   connect() {
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      console.log('WebSocket: No auth token, skipping connection');
       return;
     }
 
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      console.log('WebSocket: Already connected');
       return;
     }
 
     if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
-      console.log('WebSocket: Already connecting');
       return;
     }
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/api/ws';
     const fullUrl = `${wsUrl}?token=${token}`;
 
-    console.log('WebSocket: Connecting to', fullUrl.replace(token, '***'));
     this.connectionStatus = 'connecting';
 
     try {
@@ -43,18 +40,15 @@ class WebSocketService {
       this.socket.onclose = this.handleClose.bind(this);
       this.socket.onerror = this.handleError.bind(this);
     } catch (error) {
-      console.error('WebSocket: Connection error:', error);
+      console.error('WebSocket connection error:', error);
       this.connectionStatus = 'disconnected';
     }
   }
 
   private handleOpen() {
-    console.log('WebSocket: Connected successfully');
     this.reconnectAttempts = 0;
     this.isIntentionalClose = false;
     this.connectionStatus = 'connected';
-
-    // Start ping interval to keep connection alive
     this.startPingInterval();
   }
 
@@ -63,18 +57,16 @@ class WebSocketService {
       clearInterval(this.pingInterval);
     }
 
-    // Send ping every 25 seconds
+    // Send ping every 25 seconds to keep connection alive
     this.pingInterval = setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
         this.send('ping', {});
-        console.log('WebSocket: Sent ping');
 
-        // Set timeout for pong response
         if (this.pongTimeout) {
           clearTimeout(this.pongTimeout);
         }
+        // Wait 5 seconds for pong response
         this.pongTimeout = setTimeout(() => {
-          console.log('WebSocket: No pong received, reconnecting...');
           this.reconnect();
         }, 5000);
       }
@@ -87,7 +79,6 @@ class WebSocketService {
 
       // Handle pong response
       if (data.type === 'pong') {
-        console.log('WebSocket: Received pong');
         if (this.pongTimeout) {
           clearTimeout(this.pongTimeout);
           this.pongTimeout = null;
@@ -95,36 +86,36 @@ class WebSocketService {
         return;
       }
 
-      // Handle server ping (respond with pong)
+      // Handle server ping - respond with pong
       if (data.type === 'ping') {
         this.send('pong', {});
         return;
       }
 
-      console.log('WebSocket: Received message type:', data.type);
+      // Dispatch to registered handlers
+      const messageType = data.type;
+      const messageData = data.data || data;
+      const handlers = this.messageHandlers.get(messageType);
 
-      const handlers = this.messageHandlers.get(data.type);
       if (handlers && handlers.length > 0) {
-        handlers.forEach(handler => handler(data.data));
+        handlers.forEach(handler => handler(messageData));
       }
     } catch (error) {
-      console.error('WebSocket: Error parsing message:', error);
+      console.error('WebSocket message parsing error:', error);
     }
   }
 
   private handleClose(event: CloseEvent) {
-    console.log(`WebSocket: Disconnected - Code: ${event.code}, Reason: ${event.reason}`);
     this.connectionStatus = 'disconnected';
-
     this.stopPingInterval();
 
+    // Reconnect if not intentional and not a normal closure
     if (!this.isIntentionalClose && event.code !== 1000) {
       this.attemptReconnect();
     }
   }
 
   private handleError(error: Event) {
-    console.error('WebSocket: Error occurred');
     this.connectionStatus = 'disconnected';
   }
 
@@ -143,10 +134,7 @@ class WebSocketService {
     if (this.reconnectAttempts < this.maxReconnectAttempts && !this.isIntentionalClose) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
-      console.log(`WebSocket: Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
       setTimeout(() => this.connect(), delay);
-    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('WebSocket: Max reconnect attempts reached');
     }
   }
 
@@ -155,6 +143,7 @@ class WebSocketService {
     setTimeout(() => this.connect(), 1000);
   }
 
+  // Register a handler for specific message type
   on(messageType: string, handler: MessageHandler) {
     if (!this.messageHandlers.has(messageType)) {
       this.messageHandlers.set(messageType, []);
@@ -162,6 +151,7 @@ class WebSocketService {
     this.messageHandlers.get(messageType)!.push(handler);
   }
 
+  // Remove a handler for specific message type
   off(messageType: string, handler: MessageHandler) {
     const handlers = this.messageHandlers.get(messageType);
     if (handlers) {
@@ -172,17 +162,16 @@ class WebSocketService {
     }
   }
 
+  // Send a message through WebSocket
   send(type: string, data: any) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type, data }));
-      console.log('WebSocket: Sent message type:', type);
-    } else {
-      console.log('WebSocket: Not connected, readyState:', this.socket?.readyState);
+      const message = JSON.stringify({ type, data });
+      this.socket.send(message);
     }
   }
 
+  // Disconnect WebSocket intentionally
   disconnect() {
-    console.log('🔌 WebSocket: Intentional disconnect');
     this.isIntentionalClose = true;
     this.stopPingInterval();
 
@@ -193,10 +182,12 @@ class WebSocketService {
     this.connectionStatus = 'disconnected';
   }
 
+  // Check if WebSocket is connected
   isConnected(): boolean {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
+  // Get current connection status
   getStatus(): string {
     return this.connectionStatus;
   }
