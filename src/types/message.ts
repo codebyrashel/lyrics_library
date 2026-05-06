@@ -1,6 +1,7 @@
 export interface Conversation {
   id: string;
   participant: {
+    status: string;
     id: string;
     name: string;
     username: string;

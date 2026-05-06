@@ -33,23 +33,32 @@ export default function DashboardPage() {
 
   // Load rooms created by user from backend
   useEffect(() => {
-    const loadUserRooms = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const response = await fetch(`http://localhost:8080/api/users/${user.id}/rooms`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        });
-        const data = await response.json();
-        if (data.success) {
-          setRoomsCreated(data.rooms.length);
-        }
-      } catch (error) {
-        console.error('Failed to load user rooms:', error);
-      }
-    };
+   const loadUserRooms = async () => {
+  try {
+    const response = await fetch(`http://localhost:8080/api/users/${user.id}/rooms`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+    
+    if (!response.ok) {
+      console.log('Rooms endpoint not implemented yet');
+      return;
+    }
+    
+    const text = await response.text();
+console.log('RAW RESPONSE:', text);
+
+const data = JSON.parse(text);
+    if (data.success) {
+      setRoomsCreated(data.rooms.length);
+    }
+  } catch (error) {
+    console.log('Rooms endpoint not available:', error);
+    // Set default value
+    setRoomsCreated(0);
+  }
+};
 
     loadUserRooms();
   }, [user]);
