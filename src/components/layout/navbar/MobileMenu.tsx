@@ -20,7 +20,7 @@ export const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
       style={{ borderColor: colors.surface }}
     >
       <NavbarLinks isMobile onClick={onClose} />
-      <div className="h-px my-2" style={{ backgroundColor: colors.surface }} />
+      <div className="h-px my-2" style={{ backgroundColor: `${colors.text.muted}20` }} />
       <NavbarAuth isMobile onClick={onClose} />
     </div>
   );

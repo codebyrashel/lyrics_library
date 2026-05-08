@@ -7,10 +7,17 @@ import { NavbarLinks } from '@/components/layout/navbar/NavbarLinks';
 import { NavbarAuth } from '@/components/layout/navbar/NavbarAuth';
 import { MobileMenuButton } from '@/components/layout/navbar/MobileMenuButton';
 import { MobileMenu } from '@/components/layout/navbar/MobileMenu';
+import { usePathname } from 'next/navigation';
 
 export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const colors = getColors();
+  const pathname = usePathname();
+
+  // Don't show navbar on room, guest-room, or dashboard pages
+  if (pathname?.startsWith('/room') || pathname?.startsWith('/guest-room') || pathname?.startsWith('/dashboard')) {
+    return null;
+  }
 
   return (
     <nav 

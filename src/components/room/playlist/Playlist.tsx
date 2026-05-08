@@ -8,7 +8,6 @@ import { AddMedia } from '../addMedia/AddMedia';
 import { PlaylistHeader } from './PlaylistHeader';
 import { PlaylistContent } from './PlaylistContent';
 import { PlaylistLoading } from './PlaylistLoading';
-import { usePlaylist } from './hooks/usePlaylist';
 
 interface PlaylistProps {
   roomId: string;
@@ -16,17 +15,60 @@ interface PlaylistProps {
 
 export const Playlist = ({ roomId }: PlaylistProps) => {
   const colors = getColors();
-  const { playlist, isLoading, loadPlaylist, removeFromPlaylist, reorderPlaylist, clearPlaylist } = usePlaylist(roomId);
+  const [isLoading, setIsLoading] = useState(true);
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'one' | 'all'>('none');
-  const { currentPlaying, playItem: playLocalItem } = useRoomStore();
+  
+  // Get playlist from Zustand store
+  const playlist = useRoomStore((state) => state.playlist);
+  const currentPlaying = useRoomStore((state) => state.currentPlaying);
+  const playItem = useRoomStore((state) => state.playItem);
+  const removeFromPlaylist = useRoomStore((state) => state.removeFromPlaylist);
+  const reorderPlaylist = useRoomStore((state) => state.reorderPlaylist);
+  const clearPlaylistStore = useRoomStore((state) => state.clearPlaylist);
 
+  // Load playlist from API on mount and sync with store
   useEffect(() => {
-    loadPlaylist();
+    const loadPlaylistFromApi = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        } else {
+          const guestId = localStorage.getItem('guest_session_id');
+          if (guestId) {
+            headers['X-Guest-ID'] = guestId;
+          }
+        }
+        
+        const response = await fetch(`http://localhost:8080/api/rooms/${roomId}/playlist`, {
+          headers,
+        });
+        const data = await response.json();
+        
+        if (data.success && data.playlist && data.playlist.length > 0) {
+          // Sync API data to store if store is empty
+          const currentStorePlaylist = useRoomStore.getState().playlist;
+          if (currentStorePlaylist.length === 0) {
+            data.playlist.forEach((item: any) => {
+              useRoomStore.getState().addToPlaylist(item);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load playlist from API:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadPlaylistFromApi();
   }, [roomId]);
 
-  const playItem = (item: any) => {
-    playLocalItem(item);
+  const handlePlayItem = (item: any) => {
+    playItem(item);
     wsService.send('playlist:play', {
       roomId,
       itemId: item.id,
@@ -36,7 +78,7 @@ export const Playlist = ({ roomId }: PlaylistProps) => {
   const playRandom = () => {
     if (playlist.length === 0) return;
     const randomIndex = Math.floor(Math.random() * playlist.length);
-    playItem(playlist[randomIndex]);
+    handlePlayItem(playlist[randomIndex]);
   };
 
   const toggleRepeatMode = () => {
@@ -45,7 +87,17 @@ export const Playlist = ({ roomId }: PlaylistProps) => {
     setRepeatMode(modes[(currentIndex + 1) % modes.length]);
   };
 
-  if (isLoading) {
+  const handleClearPlaylist = () => {
+    clearPlaylistStore();
+    // Also clear on backend
+    fetch(`http://localhost:8080/api/rooms/${roomId}/playlist`, {
+      method: 'DELETE',
+    }).catch(console.error);
+  };
+
+  console.log('[Playlist] Rendering with playlist length:', playlist?.length);
+
+  if (isLoading && playlist.length === 0) {
     return <PlaylistLoading colors={colors} />;
   }
 
@@ -61,16 +113,16 @@ export const Playlist = ({ roomId }: PlaylistProps) => {
         onToggleShuffle={() => setIsShuffling(!isShuffling)}
         repeatMode={repeatMode}
         onToggleRepeat={toggleRepeatMode}
-        onClearPlaylist={clearPlaylist}
+        onClearPlaylist={handleClearPlaylist}
         colors={colors}
       >
         <AddMedia roomId={roomId} />
       </PlaylistHeader>
       
       <PlaylistContent 
-        playlist={playlist}
+        playlist={playlist || []}
         currentPlayingId={currentPlaying?.id}
-        onPlayItem={playItem}
+        onPlayItem={handlePlayItem}
         onRemoveItem={removeFromPlaylist}
         onReorderItems={reorderPlaylist}
         colors={colors}
