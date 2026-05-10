@@ -1,24 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { getColors } from '@/store/colorStore';
 
-type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info';
 
 interface ToastProps {
   message: string;
-  type: ToastType;
+  type?: ToastType;
   onClose: () => void;
   duration?: number;
 }
 
-export const Toast = ({ message, type, onClose, duration = 3000 }: ToastProps) => {
+export const Toast = ({ message, type = 'success', onClose, duration = 3000 }: ToastProps) => {
   const colors = getColors();
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose();
+      setIsVisible(false);
+      setTimeout(onClose, 300); // Allow animation to finish
     }, duration);
     return () => clearTimeout(timer);
   }, [duration, onClose]);
@@ -34,16 +36,7 @@ export const Toast = ({ message, type, onClose, duration = 3000 }: ToastProps) =
     }
   };
 
-  const getBgColor = () => {
-    switch (type) {
-      case 'success':
-        return `${colors.status.success}10`;
-      case 'error':
-        return `${colors.status.error}10`;
-      default:
-        return `${colors.primary}10`;
-    }
-  };
+  if (!isVisible) return null;
 
   return (
     <div 
@@ -57,7 +50,7 @@ export const Toast = ({ message, type, onClose, duration = 3000 }: ToastProps) =
       <span className="text-sm" style={{ color: colors.text.primary }}>
         {message}
       </span>
-      <button onClick={onClose} className="ml-2 p-0.5 hover:opacity-70 transition-opacity">
+      <button onClick={() => setIsVisible(false)} className="ml-2 p-0.5 hover:opacity-70 transition-opacity">
         <X size={14} style={{ color: colors.text.muted }} />
       </button>
     </div>

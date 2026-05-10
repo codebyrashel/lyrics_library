@@ -14,6 +14,7 @@ import { guestService } from '@/services/guest.service';
 import { ChatBlocker } from '@/components/room/ChatBlocker';
 import { getGuestAvatarColor, getGuestInitial } from '@/utils/guestNameGenerator';
 import { wsService } from '@/services/websocket.service';
+import { ShareButton } from '@/components/ui/ShareButton';
 
 export default function GuestRoomPage() {
   const params = useParams();
@@ -152,17 +153,20 @@ export default function GuestRoomPage() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setShowLeaveModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-            style={{ 
-              backgroundColor: colors.status.error,
-              color: 'white'
-            }}
-          >
-            <LogOut size={18} />
-            <span>Leave Room</span>
-          </button>
+<div className="flex items-center gap-2">
+  <ShareButton roomId={roomId} variant="outline" size="md" />
+  <button
+    onClick={() => setShowLeaveModal(true)}
+    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
+    style={{ 
+      backgroundColor: colors.status.error,
+      color: 'white'
+    }}
+  >
+    <LogOut size={18} />
+    <span>Leave Room</span>
+  </button>
+</div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">

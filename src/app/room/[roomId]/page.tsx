@@ -13,6 +13,7 @@ import { useRoomStore } from '@/store/roomStore';
 import { saveRoom, updateRoomLastVisited } from '@/store/savedRoomsStore';
 import { wsService } from '@/services/websocket.service';
 import { useAuth } from '@/contexts/AuthContext';
+import { ShareButton } from '@/components/ui/ShareButton';
 
 export default function RoomPage() {
   const params = useParams();
@@ -103,19 +104,22 @@ export default function RoomPage() {
           <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>
             {roomName}
           </h1>
-          <button
-            onClick={() => setShowLeaveModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-opacity"
-            style={{ 
-              backgroundColor: colors.status.error,
-              color: 'white'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <LogOut size={18} />
-            <span>Leave Room</span>
-          </button>
+<div className="flex items-center gap-2">
+  <ShareButton roomId={roomId} variant="outline" size="md" />
+  <button
+    onClick={() => setShowLeaveModal(true)}
+    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-opacity"
+    style={{ 
+      backgroundColor: colors.status.error,
+      color: 'white'
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+  >
+    <LogOut size={18} />
+    <span>Leave Room</span>
+  </button>
+</div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">
