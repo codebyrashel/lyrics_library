@@ -36,11 +36,20 @@ export const HeroSection = () => {
 
       if (data.success) {
         guestService.incrementRoomsCreated();
-        router.push(`/guest-room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true`);
+        
+        // Sync guest name with backend response
+        if (data.guestName) {
+          guestService.syncGuestNameWithBackend(data.guestName);
+        }
+        
+        const guestName = data.guestName || guestService.getGuestName();
+        
+        router.push(`/guest-room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true&guestName=${encodeURIComponent(guestName)}`);
       } else {
         setError(data.message || 'Failed to create room');
       }
     } catch (err) {
+      console.error('Create room error:', err);
       setError('Failed to create room. Please try again.');
     } finally {
       setIsCreating(false);
@@ -71,11 +80,20 @@ export const HeroSection = () => {
 
       if (data.success) {
         guestService.incrementRoomsJoined();
-        router.push(`/guest-room/${roomCode.trim()}?name=${encodeURIComponent(data.roomName || 'Room')}`);
+        
+        // Sync guest name with backend response
+        if (data.guestName) {
+          guestService.syncGuestNameWithBackend(data.guestName);
+        }
+        
+        const guestName = data.guestName || guestService.getGuestName();
+        
+        router.push(`/guest-room/${roomCode.trim()}?name=${encodeURIComponent(data.roomName || 'Room')}&guestName=${encodeURIComponent(guestName)}`);
       } else {
         setError(data.message || 'Room not found');
       }
     } catch (err) {
+      console.error('Join room error:', err);
       setError('Failed to join room. Please try again.');
     } finally {
       setIsJoining(false);
@@ -239,7 +257,7 @@ export const HeroSection = () => {
 
                   {/* reserve error space */}
                   <div className="h-6 mt-2">
-                    {error && (
+                    {error && activeTab === 'create' && (
                       <p className="text-xs text-center" style={{ color: colors.status.error }}>
                         {error}
                       </p>
@@ -295,7 +313,7 @@ export const HeroSection = () => {
 
                   {/* reserve error space */}
                   <div className="h-6 mt-2">
-                    {error && (
+                    {error && activeTab === 'join' && (
                       <p className="text-xs text-center" style={{ color: colors.status.error }}>
                         {error}
                       </p>

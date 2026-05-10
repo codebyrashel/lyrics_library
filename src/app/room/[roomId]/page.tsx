@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { VideoPlayer } from '@/components/room/players/VideoPlayer';
@@ -11,6 +11,8 @@ import { LeaveRoomModal } from '@/components/room/LeaveRoomModal';
 import { getColors } from '@/store/colorStore';
 import { useRoomStore } from '@/store/roomStore';
 import { saveRoom, updateRoomLastVisited } from '@/store/savedRoomsStore';
+import { wsService } from '@/services/websocket.service';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function RoomPage() {
   const params = useParams();
@@ -22,8 +24,15 @@ export default function RoomPage() {
   const colors = getColors();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const { resetRoom } = useRoomStore();
+  const { user } = useAuth();
+  
+  const hasJoined = useRef(false);
 
   useEffect(() => {
+    console.log('[RoomPage] ========== COMPONENT MOUNT ==========');
+    console.log('[RoomPage] Room ID:', roomId);
+    console.log('[RoomPage] User:', user?.id, user?.name);
+    
     saveRoom({
       id: roomId,
       name: roomName,
@@ -35,12 +44,55 @@ export default function RoomPage() {
     });
     updateRoomLastVisited(roomId);
     
-    return () => {
-      resetRoom();
+    // Function to connect WebSocket and join room
+    const setupWebSocket = async () => {
+      if (!user?.id) return;
+      
+      // Connect WebSocket if not connected
+      if (!wsService.isConnected()) {
+        console.log('[RoomPage] Connecting WebSocket...');
+        wsService.connect(user.id, false);
+        
+        // Wait for connection
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (wsService.isConnected()) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 5000);
+        });
+      }
+      
+      // Join room
+      if (wsService.isConnected() && !hasJoined.current) {
+        hasJoined.current = true;
+        console.log('[RoomPage] Sending room:join event');
+        wsService.joinRoom(roomId, user.id, user.name, false);
+      }
     };
-  }, [roomId, roomName, isHost, resetRoom]);
+    
+    setupWebSocket();
+    
+    return () => {
+      console.log('[RoomPage] ========== COMPONENT UNMOUNT ==========');
+      if (user?.id && wsService.isConnected() && hasJoined.current) {
+        console.log('[RoomPage] Sending room:leave event');
+        wsService.leaveRoom(roomId, user.id);
+      }
+      resetRoom();
+      hasJoined.current = false;
+    };
+  }, [roomId, roomName, isHost, resetRoom, user]);
 
   const handleLeaveRoom = () => {
+    console.log('[RoomPage] Leave room button clicked');
     router.push('/dashboard');
   };
 
@@ -67,7 +119,6 @@ export default function RoomPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">
-          {/* Left Column - Video Player and Playlist */}
           <div className="lg:col-span-2 space-y-4">
             <VideoPlayer />
             <div className="h-96">
@@ -75,7 +126,6 @@ export default function RoomPage() {
             </div>
           </div>
           
-          {/* Right Column - Chat and Participants */}
           <div className="space-y-4">
             <div className="h-96">
               <Chat roomId={roomId} />

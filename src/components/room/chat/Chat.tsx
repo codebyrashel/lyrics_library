@@ -9,6 +9,7 @@ import { ChatLoading } from './ChatLoading';
 import { ChatBlocker } from '../ChatBlocker';
 import { useChat } from './hooks/useChat';
 import { guestService } from '@/services/guest.service';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatProps {
   roomId: string;
@@ -18,8 +19,13 @@ export const Chat = ({ roomId }: ChatProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const colors = getColors();
   const { messages, message, isLoading, setMessage, handleSend } = useChat(roomId);
+  const { user } = useAuth();
   const isGuest = guestService.isGuest();
 
+  // Get the current user ID
+  const currentUserId = user?.id || (isGuest ? guestService.getGuestId() : null);
+
+  // Auto-scroll to bottom when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -46,7 +52,7 @@ export const Chat = ({ roomId }: ChatProps) => {
           <ChatHeader colors={colors} />
           <ChatMessages 
             messages={messages.slice(-10)} 
-            currentUserId={null} 
+            currentUserId={currentUserId}
             colors={colors} 
             messagesEndRef={messagesEndRef}
           />
@@ -73,12 +79,14 @@ export const Chat = ({ roomId }: ChatProps) => {
       }}
     >
       <ChatHeader colors={colors} />
-      <ChatMessages 
-        messages={messages} 
-        currentUserId={null} 
-        colors={colors} 
-        messagesEndRef={messagesEndRef}
-      />
+      <div className="flex-1 overflow-y-auto">
+        <ChatMessages 
+          messages={messages} 
+          currentUserId={currentUserId}
+          colors={colors} 
+          messagesEndRef={messagesEndRef}
+        />
+      </div>
       <ChatInput 
         message={message}
         setMessage={setMessage}

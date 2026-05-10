@@ -1,5 +1,7 @@
 // import { ColorPalette } from '@/types/colors';
 
+import { ColorPalette } from "@/types/colors";
+
 // export const globalColors: ColorPalette = {
 //   primary: '#3B82F6', // blue-500
 //   secondary: '#6B7280', // gray-500
@@ -18,7 +20,6 @@
 //     info: '#3B82F6', // blue-500
 //   },
 // };
-
 
 // import { ColorPalette } from '@/types/colors';
 
@@ -44,9 +45,6 @@
 //   },
 // };
 
-
-
-
 // import { ColorPalette } from '@/types/colors';
 
 // export const globalColors: ColorPalette = {
@@ -70,12 +68,6 @@
 //     info: '#38BDF8',
 //   },
 // };
-
-
-
-
-
-
 
 // import { ColorPalette } from '@/types/colors';
 
@@ -101,12 +93,6 @@
 //   },
 // };
 
-
-
-
-
-
-
 // import { ColorPalette } from '@/types/colors';
 
 // export const globalColors: ColorPalette = {
@@ -130,11 +116,6 @@
 //     info: '#38BDF8',
 //   },
 // };
-
-
-
-
-
 
 // import { ColorPalette } from '@/types/colors';
 
@@ -160,14 +141,6 @@
 //   },
 // };
 
-
-
-
-
-
-
-
-
 // import { ColorPalette } from '@/types/colors';
 
 // export const globalColors: ColorPalette = {
@@ -191,12 +164,6 @@
 //     info: '#3B82F6',
 //   },
 // };
-
-
-
-
-
-
 
 // import { ColorPalette } from '@/types/colors';
 
@@ -222,33 +189,24 @@
 //   },
 // };
 
-
-
-
-
-
-
-
-import { ColorPalette } from '@/types/colors';
-
 export const globalColors: ColorPalette = {
-  primary: '#7C3AED',
-  secondary: '#111827',
-  accent: '#F43F5E',
+  primary: "#E8908C", // brighter dusty rose
+  secondary: "#A088B8", // brighter muted purple
+  accent: "#F2C08A", // brighter apricot
 
-  background: '#050507',
-  surface: '#0F0F14',
+  background: "#08060D", // very dark
+  surface: "#100E18", // dark surface
 
   text: {
-    primary: '#F9FAFB',
-    secondary: '#9CA3AF',
-    muted: '#6B7280',
+    primary: "#F5F0FF", // near-white lavender
+    secondary: "#D0C8E0", // light lavender
+    muted: "#A098B0", // medium lavender
   },
 
   status: {
-    success: '#22C55E',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    info: '#38BDF8',
+    success: "#A8D8E0",
+    warning: "#F8CC88",
+    error: "#F080A0",
+    info: "#D0B0F0",
   },
 };

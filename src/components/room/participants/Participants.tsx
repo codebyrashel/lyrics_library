@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { getColors } from '@/store/colorStore';
 import { useAuth } from '@/contexts/AuthContext';
-// import { wsService } from '@/services/websocket.service';
 import { ParticipantHeader } from './ParticipantHeader';
 import { ParticipantList } from './ParticipantList';
 import { LoadingState } from './LoadingState';
 import { useParticipants } from './hooks/useParticipants';
+import { useParticipantsWebSocket } from './hooks/useParticipantsWebSocket';
+import { Participant } from '@/types/participant';
 
 interface ParticipantsProps {
   roomId: string;
@@ -16,13 +17,17 @@ interface ParticipantsProps {
 export const Participants = ({ roomId }: ParticipantsProps) => {
   const colors = getColors();
   const { user } = useAuth();
-  const { participants, isLoading, loadParticipants } = useParticipants(roomId);
+  const { participants, isLoading, loadParticipants, setParticipants } = useParticipants(roomId);
+  
+  // Connect WebSocket for real-time updates
+  useParticipantsWebSocket(roomId, setParticipants);
 
+  // Initial load of participants
   useEffect(() => {
     loadParticipants();
   }, [roomId]);
 
-  if (isLoading) {
+  if (isLoading && participants.length === 0) {
     return <LoadingState colors={colors} />;
   }
 

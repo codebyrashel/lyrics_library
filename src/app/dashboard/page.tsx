@@ -11,7 +11,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { getColors } from '@/store/colorStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { wsService } from '@/services/websocket.service';
-import { guestService } from '@/services/guest.service';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,12 +21,16 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [roomsCreated, setRoomsCreated] = useState(0);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const colors = getColors();
-  const isGuest = !isAuthenticated && !isLoading;
 
-  // Redirect authenticated users to login? No - guests should see dashboard too
-  // But we need to handle guest vs authenticated differently
+  // Redirect to home if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   // Load rooms created count for authenticated users only
   useEffect(() => {
@@ -60,34 +63,21 @@ export default function DashboardPage() {
     loadUserRooms();
   }, [user, isAuthenticated]);
 
-  // For guests, get rooms created from localStorage
-  useEffect(() => {
-    if (isGuest) {
-      const activity = guestService.getActivity();
-      if (activity) {
-        setRoomsCreated(activity.roomsCreated);
-      }
-    }
-  }, [isGuest]);
-
-  // Load history for authenticated users only
+  // Load history - This endpoint doesn't exist yet, so we'll use mock data or skip
   useEffect(() => {
     if (!isAuthenticated) return;
     
     const loadHistory = async () => {
+      setIsLoadingHistory(true);
       try {
-        const response = await fetch(`http://localhost:8080/api/users/history`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        });
-        const data = await response.json();
-        if (data.success && data.history) {
-          setHistoryItems(data.history);
-        }
+        // This endpoint doesn't exist yet. For now, use empty array
+        // TODO: Implement history endpoint when ready
+        setHistoryItems([]);
       } catch (error) {
         console.error('Failed to load history:', error);
         setHistoryItems([]);
+      } finally {
+        setIsLoadingHistory(false);
       }
     };
 
@@ -108,39 +98,39 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const isGuestUser = !token;
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      // If guest, add guest ID header
-      if (isGuestUser) {
-        const guestId = guestService.getGuestId();
-        headers['X-Guest-ID'] = guestId;
-      } else {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        setError('You must be logged in to create a room');
+        setIsCreating(false);
+        return;
       }
 
-      const response = await fetch('http://localhost:8080/api/rooms', {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const url = 'http://localhost:8080/api/rooms';
+      console.debug('[Dashboard] Creating room', { url, roomName, headers });
+      const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({ name: roomName }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.debug('[Dashboard] Create room response', { status: response.status, text: responseText });
+      if (!response.ok) {
+        console.error('Create room failed:', response.status, responseText);
+        setError(responseText || 'Failed to create room');
+        setIsCreating(false);
+        return;
+      }
+
+      const data = JSON.parse(responseText);
 
       if (data.success) {
-        // Track room creation for guests
-        if (isGuestUser) {
-          guestService.incrementRoomsCreated();
-          setRoomsCreated(prev => prev + 1);
-        } else {
-          setRoomsCreated(prev => prev + 1);
-        }
-        
-        // Navigate to the new room
-        router.push(`/room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true`);
+        setRoomsCreated(prev => prev + 1);
+        router.push(`/room/${data.roomId}?name=${encodeURIComponent(data.roomName || roomName)}&isHost=true`);
       } else {
         setError(data.message || 'Failed to create room');
         setIsCreating(false);
@@ -158,47 +148,60 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const isGuestUser = !token;
-      
+      const guestId = localStorage.getItem('guest_session_id');
+
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
-      
-      if (isGuestUser) {
-        const guestId = guestService.getGuestId();
-        headers['X-Guest-ID'] = guestId;
-      } else {
+      if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+      } else if (guestId) {
+        headers['X-Guest-ID'] = guestId;
       }
 
-      const response = await fetch(`http://localhost:8080/api/rooms/${roomCode}/join`, {
+      const encodedRoomCode = encodeURIComponent(roomCode);
+      const url = `http://localhost:8080/api/rooms/${encodedRoomCode}/join`;
+      console.debug('[Dashboard] Joining room', { url, roomCode, headers });
+      const response = await fetch(url, {
         method: 'POST',
         headers,
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Track room joining for guests
-        if (isGuestUser) {
-          guestService.incrementRoomsJoined();
+      const responseText = await response.text();
+      console.debug('[Dashboard] Join room response', { status: response.status, contentType: response.headers.get('content-type'), text: responseText });
+      let data: Record<string, unknown> = { success: false, message: 'Unknown error' };
+      try {
+        const parsed = responseText ? JSON.parse(responseText) : data;
+        if (parsed && typeof parsed === 'object') {
+          data = parsed as Record<string, unknown>;
         }
-        
-        // Notify via WebSocket (only if authenticated)
-        if (!isGuestUser && user?.id) {
-          wsService.send('room:join', {
-            roomId: roomCode,
-            userId: user.id,
-            name: user.name,
-          });
-        }
-
-        // Navigate to the room
-        router.push(`/room/${roomCode}?name=${encodeURIComponent(data.roomName || 'Room')}`);
-      } else {
-        setError(data.message || 'Room not found. Please check the code and try again.');
-        setIsJoining(false);
+      } catch (parseError) {
+        console.error('[Dashboard] Failed to parse join response JSON', parseError, responseText);
+        data.message = responseText;
       }
+
+      const dataSuccess = data.success === true;
+      const dataMessage = typeof data.message === 'string' ? data.message : 'Room not found. Please check the code and try again.';
+      if (!response.ok || !dataSuccess) {
+        setError(`${dataMessage} (${response.status})`);
+        setIsJoining(false);
+        return;
+      }
+
+      if (user?.id) {
+        wsService.send('room:join', {
+          roomId: roomCode,
+          userId: user.id,
+          name: user.name,
+        });
+      }
+
+      const isGuest = data.isGuest === true;
+      const guestName = typeof data.guestName === 'string' ? data.guestName : undefined;
+      const roomName = typeof data.roomName === 'string' ? data.roomName : 'Room';
+      const roomPath = isGuest ? `/guest-room/${roomCode}` : `/room/${roomCode}`;
+      const query = `?name=${encodeURIComponent(roomName)}` + (isGuest && guestName ? `&guestName=${encodeURIComponent(guestName)}` : '');
+      router.push(`${roomPath}${query}`);
     } catch (err) {
       console.error('Join room error:', err);
       setError('Failed to join room. Please try again.');
@@ -215,10 +218,14 @@ export default function DashboardPage() {
     );
   }
 
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   const totalPlays = historyItems.length;
   const hoursListened = Math.floor(totalPlays * 3.5);
-  const missingCount = historyItems.filter(i => !i.isAvailable).length;
-  const remainingRooms = isGuest ? guestService.getRemainingRooms() : Infinity;
+  const missingCount = historyItems.filter((i: any) => !i.isAvailable).length;
 
   return (
     <DashboardLayout>
@@ -247,33 +254,20 @@ export default function DashboardPage() {
           }}
         >
           <h2 className="text-xl font-semibold" style={{ color: colors.text.primary }}>
-            {isGuest ? 'Welcome, Guest!' : `Welcome back, ${user?.name}!`}
+            Welcome back, {user?.name}!
           </h2>
           <p className="text-sm mt-1" style={{ color: colors.text.muted }}>
             Create a new room or join an existing one to watch together with friends
           </p>
-          {isGuest && (
-            <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: colors.primary }}>
-              <span>⚡ Guest mode: {remainingRooms} rooms remaining (max 3)</span>
-              <button 
-                onClick={() => router.push('/register')}
-                className="underline hover:opacity-80"
-              >
-                Sign up for unlimited
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Stats - Only show for authenticated users */}
-        {isAuthenticated && (
-          <DashboardStats
-            totalPlays={totalPlays}
-            hoursListened={hoursListened}
-            missingCount={missingCount}
-            roomsCreated={roomsCreated}
-          />
-        )}
+        {/* Stats */}
+        <DashboardStats
+          totalPlays={totalPlays}
+          hoursListened={hoursListened}
+          missingCount={missingCount}
+          roomsCreated={roomsCreated}
+        />
 
         {/* Create & Join */}
         <div className="grid lg:grid-cols-2 gap-6">
@@ -281,17 +275,17 @@ export default function DashboardPage() {
           <JoinRoomCard onJoinRoom={joinRoom} isJoining={isJoining} />
         </div>
 
-        {/* History - Only show for authenticated users */}
-        {isAuthenticated && (
-          historyItems.length > 0 ? (
-            <RecentHistory historyItems={historyItems} />
-          ) : (
-            <EmptyState
-              title="No listening history yet"
-              description="Start playing music in rooms to see your history here"
-            />
-          )
+        {/* History - Temporarily disabled until endpoint is implemented */}
+        {/* 
+        {historyItems.length > 0 ? (
+          <RecentHistory historyItems={historyItems} />
+        ) : !isLoadingHistory && (
+          <EmptyState
+            title="No listening history yet"
+            description="Start playing music in rooms to see your history here"
+          />
         )}
+        */}
       </div>
     </DashboardLayout>
   );

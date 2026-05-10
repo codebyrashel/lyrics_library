@@ -6,6 +6,7 @@ interface ChatMessage {
   userName: string;
   content: string;
   timestamp: Date;
+  isSystem?: boolean;
 }
 
 interface ChatMessagesProps {
@@ -31,12 +32,12 @@ export const ChatMessages = ({ messages, currentUserId, colors, messagesEndRef }
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+    <div className="flex-1 overflow-y-auto p-3 space-y-3">
       {messages.map((msg) => (
         <ChatMessageItem 
           key={msg.id}
           message={msg}
-          isCurrentUser={msg.userId === currentUserId}
+          isCurrentUser={msg.userId === currentUserId && !msg.isSystem}
           colors={colors}
         />
       ))}

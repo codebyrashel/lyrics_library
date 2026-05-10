@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { VideoPlayer } from '@/components/room/players/VideoPlayer';
@@ -12,6 +12,8 @@ import { getColors } from '@/store/colorStore';
 import { useRoomStore } from '@/store/roomStore';
 import { guestService } from '@/services/guest.service';
 import { ChatBlocker } from '@/components/room/ChatBlocker';
+import { getGuestAvatarColor, getGuestInitial } from '@/utils/guestNameGenerator';
+import { wsService } from '@/services/websocket.service';
 
 export default function GuestRoomPage() {
   const params = useParams();
@@ -20,29 +22,110 @@ export default function GuestRoomPage() {
   const roomId = params.roomId as string;
   const roomName = searchParams.get('name') || `Room ${roomId.slice(0, 8)}`;
   const isHost = searchParams.get('isHost') === 'true';
-  const isGuest = guestService.isGuest();
   
   const colors = getColors();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestAvatarColor, setGuestAvatarColor] = useState('');
+  const [isClient, setIsClient] = useState(false);
   const { resetRoom } = useRoomStore();
+  
+  // Add refs to prevent duplicate events
+  const hasJoined = useRef(false);
+  const hasConnected = useRef(false);
 
+  // Initialize client-side only data
   useEffect(() => {
-    guestService.saveGuestRoom(roomId, roomName, isHost);
+    console.log('[GuestRoomPage] ========== COMPONENT MOUNT ==========');
+    console.log('[GuestRoomPage] Room ID:', roomId);
+    console.log('[GuestRoomPage] Room Name:', roomName);
+    console.log('[GuestRoomPage] Is Host:', isHost);
     
-    if (isGuest) {
+    setIsClient(true);
+    
+    const guestStatus = guestService.isGuest();
+    setIsGuest(guestStatus);
+    console.log('[GuestRoomPage] Is Guest:', guestStatus);
+    
+    if (guestStatus) {
+      // First, try to get the guest name from the URL or localStorage
+      const urlGuestName = searchParams.get('guestName');
+      console.log('[GuestRoomPage] URL guestName:', urlGuestName);
+      
+      let finalGuestName = '';
+      if (urlGuestName) {
+        finalGuestName = urlGuestName;
+        setGuestName(urlGuestName);
+        setGuestAvatarColor(getGuestAvatarColor(urlGuestName));
+        guestService.setGuestName(urlGuestName);
+        console.log('[GuestRoomPage] Using guest name from URL:', finalGuestName);
+      } else {
+        const name = guestService.getGuestName();
+        finalGuestName = name;
+        setGuestName(name);
+        setGuestAvatarColor(getGuestAvatarColor(name));
+        console.log('[GuestRoomPage] Using guest name from localStorage:', finalGuestName);
+      }
+      
+      guestService.saveGuestRoom(roomId, roomName, isHost);
+      
+      // Connect WebSocket and send join event - only once
+      if (!hasConnected.current) {
+        hasConnected.current = true;
+        const guestId = guestService.getGuestId();
+        console.log('[GuestRoomPage] Guest ID:', guestId);
+        console.log('[GuestRoomPage] Connecting WebSocket as guest...');
+        wsService.connect(guestId, true);
+        
+        // Small delay to ensure WebSocket is connected
+        setTimeout(() => {
+          if (wsService.isConnected() && !hasJoined.current) {
+            hasJoined.current = true;
+            console.log('[GuestRoomPage] WebSocket connected, sending room:join event');
+            wsService.joinRoom(roomId, guestId, finalGuestName, true, finalGuestName);
+          } else if (!hasJoined.current) {
+            console.log('[GuestRoomPage] WebSocket not connected yet, will retry in 1 second');
+            setTimeout(() => {
+              if (wsService.isConnected() && !hasJoined.current) {
+                hasJoined.current = true;
+                console.log('[GuestRoomPage] WebSocket now connected, sending room:join event');
+                wsService.joinRoom(roomId, guestId, finalGuestName, true, finalGuestName);
+              } else if (!hasJoined.current) {
+                console.error('[GuestRoomPage] WebSocket failed to connect');
+              }
+            }, 1000);
+          }
+        }, 500);
+      }
+      
       const timer = setTimeout(() => setShowUpsell(true), 30000);
-      return () => clearTimeout(timer);
+      return () => {
+        console.log('[GuestRoomPage] ========== COMPONENT UNMOUNT ==========');
+        clearTimeout(timer);
+        if (wsService.isConnected() && hasJoined.current) {
+          console.log('[GuestRoomPage] Sending room:leave event for guest');
+          wsService.leaveRoom(roomId, guestService.getGuestId());
+        }
+        // Reset refs
+        hasJoined.current = false;
+        hasConnected.current = false;
+      };
     }
     
     return () => {
+      console.log('[GuestRoomPage] ========== COMPONENT UNMOUNT (non-guest) ==========');
       resetRoom();
     };
-  }, [roomId, roomName, isHost, isGuest, resetRoom]);
+  }, [roomId, roomName, isHost, resetRoom, searchParams]);
 
   const handleLeaveRoom = () => {
+    console.log('[GuestRoomPage] Leave room button clicked');
     router.push('/');
   };
+
+  const showGuestInfo = isClient && isGuest && guestName;
 
   return (
     <div style={{ backgroundColor: colors.background, minHeight: '100vh' }}>
@@ -52,13 +135,19 @@ export default function GuestRoomPage() {
             <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>
               {roomName}
             </h1>
-            {isGuest && (
+            {showGuestInfo && (
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary }}>
-                  Guest Mode
+                <div 
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                  style={{ backgroundColor: guestAvatarColor }}
+                >
+                  {getGuestInitial(guestName)}
+                </div>
+                <span className="text-xs font-medium" style={{ color: colors.text.primary }}>
+                  {guestName}
                 </span>
-                <span className="text-xs" style={{ color: colors.text.muted }}>
-                  Chat locked • Max 3 participants
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary }}>
+                  Guest
                 </span>
               </div>
             )}
@@ -103,7 +192,6 @@ export default function GuestRoomPage() {
         onConfirm={handleLeaveRoom}
       />
 
-      {/* Upsell Banner - rendered at root level of component */}
       {showUpsell && isGuest && (
         <UpsellBanner
           roomId={roomId}

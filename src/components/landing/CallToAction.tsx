@@ -26,7 +26,16 @@ export const CallToAction = () => {
         const data = await response.json();
         if (data.success) {
             guestService.incrementRoomsCreated();
-            router.push(`/room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true`);
+            
+            // Sync guest name with backend response
+            if (data.guestName) {
+                guestService.syncGuestNameWithBackend(data.guestName);
+            }
+            
+            const guestName = data.guestName || guestService.getGuestName();
+            
+            // Navigate to guest-room (not room) for guests
+            router.push(`/guest-room/${data.roomId}?name=${encodeURIComponent(roomName)}&isHost=true&guestName=${encodeURIComponent(guestName)}`);
         }
     };
 

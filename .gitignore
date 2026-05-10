@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# History
+.history
+
 # next.js
 /.next/
 /out/

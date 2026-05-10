@@ -36,41 +36,92 @@ export const JoinRoomCard = ({ onJoinRoom, isJoining: externalIsJoining }: JoinR
 
   const joinRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/rooms/${roomId}/join`, {
+      const token = localStorage.getItem('auth_token');
+      const guestId = localStorage.getItem('guest_session_id');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else if (guestId) {
+        headers['X-Guest-ID'] = guestId;
+      }
+
+      const encodedRoomId = encodeURIComponent(roomId);
+      const url = `http://localhost:8080/api/rooms/${encodedRoomId}/join`;
+      console.debug('[JoinRoomCard] Joining room', { url, roomId, headers });
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
+        headers,
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Get room details
-        const roomResponse = await fetch(`http://localhost:8080/api/rooms/${roomId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        });
-        const roomData = await roomResponse.json();
-
-        if (roomData.success) {
-          // Notify via WebSocket that user joined
-          wsService.send('room:join', {
-            roomId,
-            userId: localStorage.getItem('user_id'),
-            name: roomData.room?.name,
-          });
-
-          // Navigate to room
-          router.push(`/room/${roomId}?name=${encodeURIComponent(roomData.room?.name || 'Room')}`);
-        } else {
-          setError(roomData.message || 'Failed to get room details');
+      const responseText = await response.text();
+      console.debug('[JoinRoomCard] Join room response', { status: response.status, contentType: response.headers.get('content-type'), text: responseText });
+      let data: Record<string, unknown> = { success: false, message: 'Unknown error' };
+      try {
+        const parsed = responseText ? JSON.parse(responseText) : data;
+        if (parsed && typeof parsed === 'object') {
+          data = parsed as Record<string, unknown>;
         }
-      } else {
-        setError(data.message || 'Room not found or inactive');
+      } catch (parseError) {
+        console.error('[JoinRoomCard] Failed to parse join response JSON', parseError, responseText);
+        data.message = responseText;
       }
+
+      const dataSuccess = data.success === true;
+      const dataMessage = typeof data.message === 'string' ? data.message : 'Failed to join room';
+      if (!response.ok || !dataSuccess) {
+        setError(`${dataMessage} (${response.status})`);
+        return;
+      }
+
+      const roomHeaders: HeadersInit = {};
+      if (token) {
+        roomHeaders['Authorization'] = `Bearer ${token}`;
+      } else if (guestId) {
+        roomHeaders['X-Guest-ID'] = guestId;
+      }
+
+      const roomUrl = `http://localhost:8080/api/rooms/${encodedRoomId}`;
+      console.debug('[JoinRoomCard] Fetching room details', { roomUrl, roomHeaders });
+      const roomResponse = await fetch(roomUrl, {
+        headers: roomHeaders,
+      });
+      const roomText = await roomResponse.text();
+      console.debug('[JoinRoomCard] Room details response', { status: roomResponse.status, contentType: roomResponse.headers.get('content-type'), text: roomText });
+      let roomData: Record<string, unknown> = { success: false, message: 'Unknown room response' };
+      try {
+        const parsed = roomText ? JSON.parse(roomText) : roomData;
+        if (parsed && typeof parsed === 'object') {
+          roomData = parsed as Record<string, unknown>;
+        }
+      } catch (parseError) {
+        console.error('[JoinRoomCard] Failed to parse room response JSON', parseError, roomText);
+        roomData.message = roomText;
+      }
+
+      const roomSuccess = roomData.success === true;
+      const roomMessage = typeof roomData.message === 'string' ? roomData.message : `Failed to fetch room details (${roomResponse.status})`;
+      if (!roomResponse.ok || !roomSuccess) {
+        setError(roomMessage);
+        return;
+      }
+
+      const roomInfo = roomData.room as Record<string, unknown> | undefined;
+      const roomName = typeof roomInfo?.name === 'string' ? roomInfo.name : 'Room';
+      const isGuest = data.isGuest === true;
+      const guestName = typeof data.guestName === 'string' ? data.guestName : undefined;
+
+      wsService.send('room:join', {
+        roomId,
+        userId: localStorage.getItem('user_id'),
+        name: roomName,
+      });
+
+      const roomPath = isGuest ? `/guest-room/${roomId}` : `/room/${roomId}`;
+      const query = `?name=${encodeURIComponent(roomName)}` + (isGuest && guestName ? `&guestName=${encodeURIComponent(guestName)}` : '');
+      router.push(`${roomPath}${query}`);
     } catch (err) {
       console.error('Join room error:', err);
       setError('Failed to connect to server. Please try again.');
